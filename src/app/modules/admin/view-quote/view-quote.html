@@ -1,0 +1,153 @@
+<div class="flex w-full flex-col items-center p-6 md:p-8">
+    <div class="w-full max-w-screen-xl">
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b pb-4 mb-6">
+            <div>
+                <h2 class="text-2xl font-semibold leading-8 tracking-tight">
+                    Quote Details
+                </h2>
+                <div class="text-secondary text-sm font-medium tracking-tight">
+                    Reference: <span class="font-semibold">{{ quote?.refno }}</span>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button mat-stroked-button color="primary" (click)="downloadQuote()">
+                    <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:arrow-down-tray'"></mat-icon>
+                    <span class="ml-2">Download</span>
+                </button>
+                <button mat-flat-button color="primary" (click)="buyNow()">
+                    <mat-icon class="icon-size-4" [svgIcon]="'heroicons_outline:credit-card'"></mat-icon>
+                    <span class="ml-2">Buy Now</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Basic Info Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="bg-card rounded-xl shadow p-5">
+                <h3 class="text-sm font-medium text-secondary mb-2">Customer</h3>
+                <div class="text-lg font-semibold">{{ quote?.firstName }} {{ quote?.lastName }}</div>
+                <div class="text-sm text-secondary">{{ quote?.email }}</div>
+                <div class="text-sm text-secondary">{{ quote?.phoneNo }}</div>
+            </div>
+
+            <div class="bg-card rounded-xl shadow p-5">
+                <h3 class="text-sm font-medium text-secondary mb-2">Category & Product</h3>
+                <div class="text-lg font-semibold">{{ quote?.category }}</div>
+                <div class="text-sm text-secondary">{{ quote?.prodName }}</div>
+            </div>
+
+            <div class="bg-card rounded-xl shadow p-5">
+                <h3 class="text-sm font-medium text-secondary mb-2">Status</h3>
+                <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+                      [ngClass]="getStatusColor(quote?.status)">
+          {{ quote?.status }}
+        </span>
+                <div class="text-sm text-secondary mt-2">
+                    Expires on: <span class="font-medium">{{ quote?.expiryDate | date }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shipping & Cargo Details -->
+        <div class="bg-card rounded-xl shadow p-6 mt-8">
+            <h3 class="text-lg font-semibold mb-4">Shipping & Cargo Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                    <label class="text-sm text-secondary">Origin Country</label>
+                    <div class="font-medium">{{ quote?.originCountry }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">Destination</label>
+                    <div class="font-medium">{{ quote?.destination }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">Vessel Name</label>
+                    <div class="font-medium">{{ quote?.vesselName }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">Cargo Type</label>
+                    <div class="font-medium">{{ quote?.cargotype }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">Shipping Mode</label>
+                    <div class="font-medium">{{ quote?.shippingmode }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">Packaging Type</label>
+                    <div class="font-medium">{{ quote?.packagingtype }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Summary -->
+        <div class="bg-card rounded-xl shadow p-6 mt-8">
+            <h3 class="text-lg font-semibold mb-4">Premium Details</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div>
+                    <label class="text-sm text-secondary">Sum Assured</label>
+                    <div class="font-medium">{{ quote?.sumassured | currency:'KES ' }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">Premium</label>
+                    <div class="font-medium">{{ quote?.premium | currency:'KES ' }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">PHCF</label>
+                    <div class="font-medium">{{ quote?.phcf | currency:'KES ' }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">Training Levy</label>
+                    <div class="font-medium">{{ quote?.traininglevy | currency:'KES ' }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">Stamp Duty</label>
+                    <div class="font-medium">{{ quote?.sd | currency:'KES ' }}</div>
+                </div>
+                <div>
+                    <label class="text-sm text-secondary">Net Premium</label>
+                    <div class="text-lg font-bold text-green-600">{{ quote?.netprem | currency:'KES ' }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Supporting Documents -->
+        <div class="bg-card rounded-xl shadow p-6 mt-8">
+            <h3 class="text-lg font-semibold mb-4">Supporting Documents</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="flex items-center space-x-2">
+                    <mat-icon [svgIcon]="'heroicons_outline:document'"></mat-icon>
+                    <span>ID Document</span>
+                    <mat-icon *ngIf="quote?.idDocumentExists" color="primary" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
+                    <mat-icon *ngIf="!quote?.idDocumentExists" color="warn" [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <mat-icon [svgIcon]="'heroicons_outline:document'"></mat-icon>
+                    <span>KRA Document</span>
+                    <mat-icon *ngIf="quote?.kraDocumentExists" color="primary" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
+                    <mat-icon *ngIf="!quote?.kraDocumentExists" color="warn" [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <mat-icon [svgIcon]="'heroicons_outline:document'"></mat-icon>
+                    <span>Invoice</span>
+                    <mat-icon *ngIf="quote?.invoiceIdExists" color="primary" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
+                    <mat-icon *ngIf="!quote?.invoiceIdExists" color="warn" [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <mat-icon [svgIcon]="'heroicons_outline:document'"></mat-icon>
+                    <span>IDF Document</span>
+                    <mat-icon *ngIf="quote?.idfDocumentExists" color="primary" [svgIcon]="'heroicons_outline:check-circle'"></mat-icon>
+                    <mat-icon *ngIf="!quote?.idfDocumentExists" color="warn" [svgIcon]="'heroicons_outline:x-circle'"></mat-icon>
+                </div>
+            </div>
+        </div>
+
+        <!-- Description Section -->
+        <div class="bg-card rounded-xl shadow p-6 mt-8">
+            <h3 class="text-lg font-semibold mb-3">Description</h3>
+            <p class="text-secondary text-sm leading-relaxed">
+                {{ quote?.description || 'No description provided for this quote.' }}
+            </p>
+        </div>
+    </div>
+</div>
