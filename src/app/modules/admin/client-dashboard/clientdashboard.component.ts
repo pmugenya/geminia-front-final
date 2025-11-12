@@ -17,6 +17,8 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { finalize, forkJoin } from 'rxjs';
 import { QuoteService } from '../../../core/services/quote.service';
 import { Router } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { QuoteProductDialogsComponent } from '../quote-product-dialog/quote-product-dialog.component';
 
 // Chart options interface
 interface ApexChartOptions {
@@ -156,6 +158,7 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
     constructor(  private userService: UserService,
                   private cdr: ChangeDetectorRef,
                   private router: Router,
+                  private dialog: MatDialog,
                   private quoteService: QuoteService) {
         // Initialize data sources
 
@@ -454,13 +457,30 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
      */
     viewPolicy(policy: PolicyRecord): void {
         this.router.navigate(['/viewmarinequote', policy.id]);
-        // Navigate to policy details page
     }
 
     viewQuote(policy: PendingQuote): void {
-        console.log('Viewing policy:', policy.quoteId);
         this.router.navigate(['/viewquote', policy.quoteId]);
-        // Navigate to policy details page
+    }
+
+    openProductQuoteDialog(): void {
+        const dialogRef = this.dialog.open(QuoteProductDialogsComponent, {
+            width: '100%',
+            maxWidth: '480px',
+            panelClass: ['fuse-dialog'],
+            autoFocus: false
+        });
+
+        dialogRef.afterClosed().subscribe((selectedProduct) => {
+            if (selectedProduct) {
+                if(selectedProduct==='Marine'){
+                    this.router.navigate(['/marinequote']);
+                }
+                else{
+
+                }
+            }
+        });
     }
 
     /**

@@ -6,14 +6,14 @@ import {
     Country,
     MarineProduct,
     PackagingType, Port,
-    QuoteResult,
+    QuoteResult, QuotesData,
     User, UserDocumentData,
 } from '../../../core/user/user.types';
 import { UserCrudService } from '../../../core/user/user-crud.service';
 import { MatIcon } from '@angular/material/icon';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import {
-    AsyncPipe,
+    AsyncPipe, CurrencyPipe,
     DatePipe,
     DecimalPipe,
     NgClass,
@@ -42,7 +42,7 @@ import { MatInput, MatInputModule } from '@angular/material/input';
 import { MatRadioButton, MatRadioGroup } from '@angular/material/radio';
 import { ThousandsSeparatorValueAccessor } from '../../../core/directives/thousands-separator-value-accessor';
 import { QuoteService } from '../../../core/services/quote.service';
-import { FuseAlertComponent } from '../../../../@fuse/components/alert';
+import { FuseAlertComponent, FuseAlertService } from '../../../../@fuse/components/alert';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FuseAlertType } from '@fuse/components/alert';
 import { MatCheckbox } from '@angular/material/checkbox';
@@ -90,6 +90,8 @@ import { MomentDateAdapter } from '@angular/material-moment-adapter';
         MatCheckbox,
         MatDatepickerToggle,
         AsyncPipe,
+        CurrencyPipe,
+        DatePipe,
 
     ],
     providers: [
@@ -113,7 +115,8 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
     quotationForm!: FormGroup;
     coverageFormGroup!: FormGroup;
     shipmentForm!: FormGroup;
-
+    quote?: QuotesData;
+    isLoading = true;
     isLoadingMarineData: boolean = true;
     isLoadingCargoTypes: boolean = true;
     selectedCategoryId: number;
@@ -192,10 +195,12 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
     constructor(private fb: FormBuilder,
                 private userService: UserService,
                 private quotationService: QuoteService,
+                private _fuseAlertService: FuseAlertService,
                 private datePipe: DatePipe,
                 private _snackBar: MatSnackBar) { }
 
     ngOnInit(): void {
+        this._fuseAlertService.dismiss('quoteDownloadError');
         this.initForms();
         this.setupFormSubscriptions();
         this.isLoadingMarineData = true;
@@ -229,7 +234,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
         this.setupDateValidation();
 
-      var authUser =  this.userService.getCurrentUser();
+      const authUser =  this.userService.getCurrentUser();
       if(authUser){
           const userType = authUser.userType;
           if(userType==='C'){
@@ -1446,15 +1451,9 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
         this.quotationService.createQuote(formData).subscribe({
             next: (res) => {
-                this._snackBar.open('Quotation submitted successfully!', 'Close', {
-                    duration: 5000,
-                    horizontalPosition: 'right',
-                    verticalPosition: 'top',
-                });
                 this.isSaving = false;
                 this.quoteResult = res;
                 const formValue = this.quotationForm.getRawValue();
-                console.log(formValue);
                 const tradeType = formValue.tradeType ? 'Import' : 'Export'
                 this.shipmentForm.get('modeOfShipment')?.setValue(formValue.modeOfShipment);
                 this.shipmentForm.get('tradeType')?.setValue(tradeType);
@@ -1487,6 +1486,18 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                     });
                 }
 
+                this.isLoading = true;
+                this.quotationService.getQuoteById(''+this.quoteResult.id).subscribe({
+                    next: (data) => {
+                        this.quote = data;
+                        this.isLoading = false;
+                    },
+                    error: (err) => {
+                        console.error('Error fetching transaction:', err);
+                        this.isLoading = false;
+                    }
+                });
+
                 this.stepper.next();
             },
             error: (err) => {
@@ -1495,6 +1506,21 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 this.isSaving = false;
             },
         });
+    }
+
+    getStatusColor(status: string): string {
+        switch (status?.toLowerCase()) {
+            case 'active':
+                return 'bg-green-100 text-green-700';
+            case 'expired':
+                return 'bg-red-100 text-red-700';
+            case 'pending':
+                return 'bg-yellow-100 text-yellow-700';
+            case 'draft':
+                return 'bg-gray-100 text-gray-700';
+            default:
+                return 'bg-blue-100 text-blue-700';
+        }
     }
 
     compareCountries = (c1: Country, c2: Country): boolean => {
@@ -1531,8 +1557,6 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                     field: key,
                     errors: this.shipmentForm.get(key)?.errors
                 }));
-
-            console.warn('❌ Invalid form fields:', invalidFields);
 
 
             this._snackBar.open('Please fill in all required fields correctly', 'Close', {
@@ -1640,7 +1664,6 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                  console.log('STK Push response', res);
                  const { checkOutRequestId, merchantRequestId } = res;
 
-                 // Ensure no duplicate polling
                  this.paymentPollingSub?.unsubscribe();
 
                  let attempts = 0;
@@ -1663,21 +1686,18 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                  ).subscribe((statusRes) => {
                      console.log('Payment status', statusRes);
 
-                     // ✅ Successful payment
                      if (statusRes.resultCode === 0 && statusRes.mpesaCode) {
                          this.paymentSuccess = true;
                          this._snackBar.open('Payment successful!', 'Close', { duration: 4000 });
                          this.paymentPollingSub?.unsubscribe();
                      }
 
-                     // ❌ Failed or cancelled
                      else if (statusRes.resultCode !== 0) {
                          this.paymentSuccess = false;
                          this._snackBar.open('Payment failed or cancelled.', 'Close', { duration: 4000 });
                          this.paymentPollingSub?.unsubscribe();
                      }
 
-                     // ⏳ Timed out — user didn’t complete payment
                      else if (attempts >= maxAttempts) {
                          this.paymentSuccess = false;
                          this._snackBar.open('Payment unsuccessful. Request timed out.', 'Close', { duration: 4000 });
@@ -1692,5 +1712,49 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                  this._snackBar.open('STK request failed. Please try again.', 'Close', { duration: 5000 });
              }
          });
+    }
+
+
+    downloadQuote(): void {
+        if (!this.quoteResult.id) {
+            this._fuseAlertService.show('quoteDownloadError');
+            return;
+        }
+        this.userService.downloadQuote(''+this.quoteResult.id).subscribe({
+            next: (base64String) => {
+                try {
+                    console.log('Base64 response:', base64String);
+
+                    const base64 = base64String.split(',')[1] || base64String;
+                    const byteCharacters = atob(base64); // ⚠️ can throw
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'application/pdf' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'quote.pdf';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+
+                    // Optional: show success
+                } catch (error) {
+                    console.error('Error decoding base64:', error);
+                    this._fuseAlertService.show('quoteDownloadError');
+                    setTimeout(() => this._fuseAlertService.dismiss('quoteDownloadError'), 4000);
+                }
+            },
+            error: (err) => {
+                console.error('Download request failed:', err);
+                this._fuseAlertService.show('quoteDownloadError');
+                setTimeout(() => this._fuseAlertService.dismiss('quoteDownloadError'), 4000);
+            }
+        });
+
+
     }
 }

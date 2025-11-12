@@ -229,70 +229,139 @@
                 <!-- Step 2 -->
                 <mat-step [stepControl]="coverageFormGroup">
                     <ng-template matStepLabel>Marine Quote Details</ng-template>
+                    <div *ngIf="isLoading" class="flex flex-col items-center justify-center h-[60vh] w-full">
+                        <mat-spinner diameter="60" color="primary"></mat-spinner>
+                        <p class="mt-4 text-gray-600 font-medium">Loading quote details...</p>
+                    </div>
 
                     <form [formGroup]="coverageFormGroup" class="space-y-6 w-full max-w-4xl mx-auto">
 
+                        <fuse-alert
+                            name="quoteDownloadError"
+                            type="error"
+                            [dismissible]="true"
+                            [appearance]="'soft'">
+                            Failed to download quote. Please try again later.
+                        </fuse-alert>
+
                         <!-- Step Title -->
-                        <div class="mb-6">
-                            <h2 class="text-2xl sm:text-3xl font-bold text-gray-900 text-center sm:text-left">
-                                Review Your Quote & Pay
-                            </h2>
-                        </div>
 
-                        <!-- Quote Details Card -->
-                        <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-md">
-                            <p class="mb-4 flex items-center text-sm sm:text-base text-gray-600">
-                                <mat-icon class="mr-2 text-blue-600 text-lg sm:text-xl">info</mat-icon>
-                                Please confirm the details below before proceeding to payment.
-                            </p>
-
-                            <!-- Shipment Details -->
-                            <div class="space-y-2">
-                                <h4 class="text-base sm:text-lg font-bold text-gray-900 mb-2">Shipment Details</h4>
-                                <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:text-base">
-                                    <span class="text-gray-600">Trade Type:</span>
-                                    <span class="font-medium text-gray-900">{{ quotationForm.value.tradeType === '1' ? 'Import' : 'Export' }}</span>
-
-                                    <span class="text-gray-600">Cargo Type:</span>
-                                    <span class="font-medium text-gray-900">{{ quotationForm.value.marineCargoType | titlecase }}</span>
-
-                                    <span class="text-gray-600">Origin:</span>
-                                    <span class="font-medium text-gray-900">{{ selectedCountry | uppercase }}</span>
-
-                                    <span class="text-gray-600">Destination:</span>
-                                    <span class="font-medium text-gray-900">{{ quotationForm.value.destination | uppercase }}</span>
-
-                                    <span class="text-gray-600">Sum Insured [KES]:</span>
-                                    <span class="font-bold text-gray-900">{{ formatAmount(quotationForm.value.sumInsured) }}</span>
+                        <div class="flex items-center justify-between border-b pb-4 mb-6" *ngIf="!isLoading && quote">
+                            <div>
+                                <h2 class="text-2xl font-semibold leading-8 tracking-tight">
+                                    Quote Details
+                                </h2>
+                                <div class="text-secondary text-sm font-medium tracking-tight">
+                                    Reference: <span class="font-semibold">{{ quote?.refno }}</span>
                                 </div>
                             </div>
-
-
-
+                            <div class="flex items-center space-x-3">
+                                <button
+                                    mat-flat-button
+                                    color="primary"
+                                    class="download-btn"
+                                    (click)="downloadQuote()">
+                                    <mat-icon svgIcon="heroicons_outline:arrow-down-tray" class="mr-2"></mat-icon>
+                                    Download Quote
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Premium Summary Card -->
-                        <!-- Premium Summary Card -->
-                        <div class="rounded-lg border border-gray-200 bg-white p-3 sm:p-4 shadow-sm" *ngIf="quoteResult?.netprem">
-                            <h3 class="mb-3 text-lg sm:text-xl font-bold text-gray-900">Premium Summary</h3>
-                            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:text-base">
-                                <span class="text-gray-600">Basic Premium:</span>
-                                <span class="font-medium text-gray-900 text-right">KES {{ formatAmount(quoteResult.premium) }}</span>
-
-                                <span class="text-gray-600">PHCF (0.25%):</span>
-                                <span class="font-medium text-gray-900 text-right">KES {{ formatAmount(quoteResult.phcf) }}</span>
-
-                                <span class="text-gray-600">Training Levy (0.2%):</span>
-                                <span class="font-medium text-gray-900 text-right">KES {{ formatAmount(quoteResult.tl) }}</span>
-
-                                <span class="text-gray-600">Stamp Duty<span *ngIf="quotationForm.get('modeOfShipment')?.value !== '2'"> (0.05%)</span>:</span>
-                                <span class="font-medium text-gray-900 text-right">KES {{ formatAmount(quoteResult.sd) }}</span>
-
-                                <span class="text-gray-600 font-bold">Total Payable:</span>
-                                <span class="font-bold text-white text-right" style="background-color:#1E90FF; padding:0.25rem 0.5rem; border-radius:0.25rem;">
-      KES {{ quoteResult.netprem | number: '1.2-2' }}
-    </span>
+                        <!-- Basic Info Section -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div class="bg-card rounded-xl shadow p-5">
+                                <h3 class="text-sm font-medium text-secondary mb-2">Customer</h3>
+                                <div class="text-lg font-semibold">{{ quote?.firstName }} {{ quote?.lastName }}</div>
+                                <div class="text-sm text-secondary">{{ quote?.email }}</div>
+                                <div class="text-sm text-secondary">{{ quote?.phoneNo }}</div>
                             </div>
+
+                            <div class="bg-card rounded-xl shadow p-5">
+                                <h3 class="text-sm font-medium text-secondary mb-2">Category & Product</h3>
+                                <div class="text-lg font-semibold">{{ quote?.category }}</div>
+                                <div class="text-sm text-secondary">{{ quote?.prodName }}</div>
+                            </div>
+
+                            <div class="bg-card rounded-xl shadow p-5">
+                                <h3 class="text-sm font-medium text-secondary mb-2">Status</h3>
+                                <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium"
+                                      [ngClass]="getStatusColor(quote?.status)">{{ quote?.status }}</span>
+                                <div class="text-sm text-secondary mt-2">
+                                    Expires on: <span class="font-medium">{{ quote?.expiryDate | date }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Shipping & Cargo Details -->
+                        <div class="bg-card rounded-xl shadow p-6 mt-8">
+                            <h3 class="text-lg font-semibold mb-4">Shipping & Cargo Details</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="text-sm text-secondary">Origin Country</label>
+                                    <div class="font-medium">{{ quote?.originId }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">Destination</label>
+                                    <div class="font-medium">{{ quote?.destination }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">Vessel Name</label>
+                                    <div class="font-medium">{{ quote?.vesselName }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">Cargo Type</label>
+                                    <div class="font-medium">{{ quote?.cargotype }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">Shipping Mode</label>
+                                    <div class="font-medium">{{ quote?.shippingmode }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">Packaging Type</label>
+                                    <div class="font-medium">{{ quote?.packagingtype }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Financial Summary -->
+                        <div class="bg-card rounded-xl shadow p-6 mt-8">
+                            <h3 class="text-lg font-semibold mb-4">Premium Details</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                <div>
+                                    <label class="text-sm text-secondary">Sum Assured</label>
+                                    <div class="font-medium">{{ quote?.sumassured | currency:'KES ' }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">Premium</label>
+                                    <div class="font-medium">{{ quote?.premium | currency:'KES ' }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">PHCF</label>
+                                    <div class="font-medium">{{ quote?.phcf | currency:'KES ' }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">Training Levy</label>
+                                    <div class="font-medium">{{ quote?.traininglevy | currency:'KES ' }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">Stamp Duty</label>
+                                    <div class="font-medium">{{ quote?.sd | currency:'KES ' }}</div>
+                                </div>
+                                <div>
+                                    <label class="text-sm text-secondary">Net Premium</label>
+                                    <div class="text-lg font-bold text-green-600">{{ quote?.netprem | currency:'KES ' }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Supporting Documents -->
+
+                        <!-- Description Section -->
+                        <div class="bg-card rounded-xl shadow p-6 mt-8">
+                            <h3 class="text-lg font-semibold mb-3">Description</h3>
+                            <p class="text-secondary text-sm leading-relaxed">
+                                {{ quote?.description || 'No description provided for this quote.' }}
+                            </p>
                         </div>
 
 
@@ -305,10 +374,6 @@
                                 Back
                             </button>
 
-                            <button  class="flex items-center justify-center gap-2 rounded-lg px-4 sm:px-6 py-2 text-sm sm:text-base font-semibold text-white transition-opacity hover:opacity-90" style="background-color: #00BCD4;">
-                                <mat-icon class="text-lg sm:text-xl">download</mat-icon>
-                                <span>Download Quote</span>
-                            </button>
 
                             <button
                                 mat-flat-button
