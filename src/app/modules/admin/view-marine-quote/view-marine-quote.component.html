@@ -8,18 +8,47 @@
         <div class="p-6 border-b bg-gradient-to-r from-blue-50 to-blue-100">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900">Marine Shipping Application - {{refno}}</h2>
-                    <p class="text-sm text-gray-600 mt-1">Reference: <span class="font-semibold text-blue-600">{{refno}}</span></p>
-                    <p class="text-sm text-gray-600 mt-1">Status: <span class="font-semibold text-blue-600">{{approvedStatus}}</span></p>
+                    <h2 class="text-2xl font-bold text-gray-900">
+                        Marine Shipping Application - {{refno}}
+                    </h2>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Reference: <span class="font-semibold text-blue-600">{{refno}}</span>
+                    </p>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Status: <span class="font-semibold text-blue-600">{{approvedStatus}}</span>
+                    </p>
                 </div>
-                <div class="mt-4 md:mt-0 flex gap-3" *ngIf="erprefno">
-                    <button class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all">
+
+                <div class="mt-4 md:mt-0 flex flex-col gap-2" *ngIf="erprefno">
+                    <!-- Download button -->
+                    <button
+                        (click)="printCertificate()"
+                        class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all"
+                    >
                         <mat-icon class="text-blue-600">download</mat-icon>
                         <span class="text-sm font-medium">Download Certificate</span>
                     </button>
+
+                    <!-- Progress bar -->
+                    <mat-progress-bar
+                        *ngIf="progress >= 0"
+                        mode="determinate"
+                        [value]="progress"
+                        color="accent"
+                        class="w-full"
+                    ></mat-progress-bar>
+
+                    <!-- Optional text percentage -->
+                    <div
+                        *ngIf="progress >= 0"
+                        class="text-sm text-gray-600"
+                    >
+                        Download Progress: {{progress}}%
+                    </div>
                 </div>
             </div>
         </div>
+
 
 
         <!-- Payment Status -->

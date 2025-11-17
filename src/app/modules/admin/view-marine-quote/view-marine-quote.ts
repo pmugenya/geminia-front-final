@@ -6,6 +6,8 @@ import { MatIcon } from '@angular/material/icon';
 import { DatePipe, DecimalPipe, NgClass, NgIf } from '@angular/common';
 import { QuoteService } from '../../../core/services/quote.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { HttpEventType } from '@angular/common/http';
+import { MatProgressBar } from '@angular/material/progress-bar';
 
 // Interfaces matching your Java model
 interface ApplicationShippingItemsData {
@@ -104,6 +106,7 @@ interface ApplicationShippingData {
         DecimalPipe,
         MatProgressSpinner,
         NgIf,
+        MatProgressBar,
     ],
 })
 export class ViewMarineQuote implements OnInit {
@@ -114,6 +117,7 @@ export class ViewMarineQuote implements OnInit {
 
     // Individual properties for easy template binding
     id: number;
+    progress = -1;
     refno: string;
     erprefno: string;
     caAccountCode: string;
@@ -227,6 +231,7 @@ export class ViewMarineQuote implements OnInit {
                 this.netpremium = data.netpremium;
                 this.agencyName = data.agencyName;
                 this.approvedStatus = data.approvedStatus;
+                this.batchNo = data.batchNo;
                 console.log(data);
                 this.isLoading = false;
                 this.cdr.detectChanges();
@@ -251,30 +256,54 @@ export class ViewMarineQuote implements OnInit {
         }
     }
 
-    /**
-     * Load application data from API
-     */
-    loadApplicationData(applicationId: string): void {
-        this.isLoading = true;
-        this.error = null;
 
-        // TODO: Replace with your actual API service call
-        // Example:
-        // this.marineService.getApplicationById(applicationId).subscribe({
-        //     next: (data) => {
-        //         this.setApplicationData(data);
-        //         this.isLoading = false;
-        //     },
-        //     error: (error) => {
-        //         this.error = 'Failed to load application data';
-        //         this.isLoading = false;
-        //         this.showError('Failed to load application data');
-        //     }
-        // });
+    printCertificate(){
+        console.log(this.error);
+        if(this.error){
+            this.showError('An Error Occured while trying to retrieve certificate '+this.error);
+            return;
+        }
 
-        // Mock data for demonstration
-        this.loadMockData();
+
+        this.quoteService.downloadDigitalCert(''+this.batchNo).subscribe({
+            next: (event) => {
+                switch (event.type) {
+                    case HttpEventType.DownloadProgress:
+                        if (event.total) {
+                            this.progress = Math.round((100 * event.loaded) / event.total);
+                        }
+                        break;
+
+                    case HttpEventType.Response:
+                        const blob = event.body!;
+                        const filename = this.getFileNameFromHeaders(event.headers) || 'digital_cert.pdf';
+
+                        const link = document.createElement('a');
+                        link.href = window.URL.createObjectURL(blob);
+                        link.download = filename;
+                        link.click();
+                        window.URL.revokeObjectURL(link.href);
+                        this.progress = -1; // reset progress
+                        break;
+                }
+            },
+            error: (err) => {
+                this.showError('Unable to get Certificate to Download the certificate');
+                this.progress = -1;
+            }
+        });
+
     }
+
+    private getFileNameFromHeaders(headers: any): string | null {
+        const contentDisposition = headers.get('Content-Disposition');
+        if (!contentDisposition) return null;
+
+        const matches = /filename="(.+)"/.exec(contentDisposition);
+        return matches && matches.length > 1 ? matches[1] : null;
+    }
+
+
 
     /**
      * Set application data and map to component properties
@@ -355,106 +384,7 @@ export class ViewMarineQuote implements OnInit {
     /**
      * Load mock data for demonstration
      */
-    loadMockData(): void {
-        setTimeout(() => {
-            const mockData: ApplicationShippingData = {
-                id: 1001,
-                refno: 'MAR-2025-001234',
-                erprefno: 'ERP-2025-5678',
-                caAccountCode: 'CA-12345',
-                ucrNumber: 'UCR-2025-9876',
-                financierPin: 'A123456789B',
-                importerPin: 'A987654321C',
-                productName: 'Marine Cargo Insurance',
-                agentId: 501,
-                agnactcode: 1001,
-                agencyName: 'Marine Insurance Brokers Ltd',
-                consignmentNumber: 'CONS-2025-4567',
-                importerType: 'Corporate',
-                originCountryId: 156,
-                originCountryName: 'China',
-                originPortId: 5001,
-                originPortName: 'Shanghai Port',
-                originPortNames: 'Shanghai International Port',
-                destCountryId: 404,
-                destCountryName: 'Kenya',
-                destPortId: 6001,
-                destPortName: 'Mombasa Port',
-                destPortNames: 'Port of Mombasa',
-                shippingModeId: 1,
-                shippingModeName: 'Sea',
-                rotationNumber: 'ROT-2025-001',
-                voyageNumber: 'VOY-123456',
-                vesselName: 'MV PACIFIC STAR',
-                vesselNumber: 'IMO-9876543',
-                dateArrival: new Date('2025-12-15'),
-                dischageDate: new Date('2025-12-18'),
-                sumassured: 25000000,
-                premium: 125000,
-                netpremium: 131875,
-                traininglevy: 2500,
-                stampduty: 1250,
-                phf: 3125,
-                premrate: 0.5,
-                approvedBy: 'John Doe',
-                approvedPin: 'A111222333D',
-                approvedStatus: 'APPROVED',
-                createdDate: new Date('2025-11-10'),
-                approvedDate: new Date('2025-11-11'),
-                clientId: 2001,
-                clienttransid: 3001,
-                batchNo: 100,
-                firstname: 'James',
-                middlename: 'Kamau',
-                lastname: 'Mwangi',
-                kentradeStatus: 'SUCCESS',
-                kentradeEndorseStatus: 'ENDORSED',
-                kentradeCancStatus: null,
-                kentradeFailReason: null,
-                description: 'Import of electronics and machinery parts',
-                cargoData: {
-                    id: 4001,
-                    cargoType: 'General Cargo',
-                    weight: 5000
-                },
-                paid: 'YES',
-                totalPaid: 131875,
-                countyName: 'Nairobi',
-                countyId: 47,
-                transshippingAt: 'Dubai Port',
-                transshippingId: 7001,
-                loadingAtId: 5001,
-                dischargeId: 6001,
-                sectCode: 1,
-                cargoDescription: 'Electronics - Laptops, Tablets, Mobile Phones and Accessories',
-                idfNumber: 'IDF-2025-123456',
-                error: null,
-                shippingItemsData: [
-                    {
-                        id: 1,
-                        description: 'Laptop Computers',
-                        quantity: 500,
-                        value: 15000000
-                    },
-                    {
-                        id: 2,
-                        description: 'Tablet Devices',
-                        quantity: 300,
-                        value: 6000000
-                    },
-                    {
-                        id: 3,
-                        description: 'Mobile Phones',
-                        quantity: 200,
-                        value: 4000000
-                    }
-                ]
-            };
 
-            this.setApplicationData(mockData);
-            this.isLoading = false;
-        }, 1000);
-    }
 
     /**
      * Download application as PDF

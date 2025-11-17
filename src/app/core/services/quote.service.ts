@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpEvent, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { QuotesData, RecentActivity } from '../user/user.types';
@@ -44,6 +44,17 @@ export class QuoteService {
         }
 
         return this.http.get(`${this.baseUrl}/shippingapplication/${applicationId}`, { params });
+    }
+
+    downloadDigitalCert(refNo: string): Observable<HttpEvent<Blob>> {
+        const params = new HttpParams().set('refNo', refNo);
+
+        return this.http.get(`${this.baseUrl}/shippingapplication/digitalCert`, {
+            params,
+            responseType: 'blob',
+            observe: 'events',      // observe events for progress
+            reportProgress: true   // enables progress tracking
+        });
     }
 
     computePremium(sumInsured: number, cargoType: number, shipping: number): Observable<any> {
