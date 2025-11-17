@@ -75,6 +75,9 @@ export const appRoutes: Route[] = [
         },
         children: [
             {path: 'dashboard', loadChildren: () => import('app/modules/admin/client-dashboard/clientdashboard.routes')},
+            {path: 'agentdashboard', loadChildren: () => import('app/modules/admin/dashboard/dashboard.routes')},
+            {path: 'clientquotes', loadChildren: () => import('app/modules/admin/quote-listing/quote-listing.routes')},
+            {path: 'clientpolicies', loadChildren: () => import('app/modules/admin/policies-listing/policies-listing.routes')},
             {path: 'marinequote', loadChildren: () => import('app/modules/admin/marine-quote/marine-quote.routes')},
             {path: 'viewmarinequote/:quoteId', loadChildren: () => import('app/modules/admin/view-marine-quote/view-marine-quote.routes')},
             {path: 'viewquote/:quoteId', loadChildren: () => import('app/modules/admin/view-quote/view-quote.routes')},

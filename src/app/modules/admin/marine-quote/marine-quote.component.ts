@@ -6,7 +6,7 @@ import {
     Country,
     MarineProduct,
     PackagingType, Port,
-    QuoteResult, QuotesData,
+    QuoteResult, QuotesData, StoredUser,
     User, UserDocumentData,
 } from '../../../core/user/user.types';
 import { UserCrudService } from '../../../core/user/user-crud.service';
@@ -170,12 +170,14 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
     isLoadingCounties = false;
     pageSize = 50;
     isLoadingCategories = false;
+    isSearching = false;
     categories: any[] = [];
     counties: any[] = [];
     isSaving = false;
     submissionError: string | null = null;
     dischargePorts: any[] = [];
     cargoTypes: any[] = [];
+    user: StoredUser;
     filteredDischargePorts: ReplaySubject<any[]> = new ReplaySubject<any[]>(1);
     filteredCounties: ReplaySubject<any[]> = new ReplaySubject<any[]>(1);
     filteredCargoTypes: ReplaySubject<any[]> = new ReplaySubject<any[]>(1);
@@ -190,6 +192,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
     paymentSuccess?: boolean;
 
     private paymentPollingSub?: Subscription;
+    private _unsubscribeAll: Subject<any> = new Subject<any>();
 
 
     constructor(private fb: FormBuilder,
@@ -204,6 +207,15 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
         this.initForms();
         this.setupFormSubscriptions();
         this.isLoadingMarineData = true;
+
+        this.userService.currentUser$
+            .pipe(takeUntil(this._unsubscribeAll))
+            .subscribe((user: StoredUser) => {
+                this.user = user;
+                console.log(user);
+                // Mark for check
+            });
+
 
         // Add this call to setup search filters
         this.setupSearchFilters();
@@ -237,8 +249,10 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
       const authUser =  this.userService.getCurrentUser();
       if(authUser){
           const userType = authUser.userType;
-          if(userType==='C'){
-              this.fetchUserDocuments();
+          if (userType === 'A') {
+              this.toggleRequiredFields(true);
+          } else {
+              this.toggleRequiredFields(false);
           }
       }
 
@@ -261,6 +275,20 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 this.shipmentForm.get('phoneNumber')?.setValue(this.extractPhoneNumber(data.phoneNumber));
                 this.shipmentForm.get('kraPin')?.setValue(data.pinNo);
                 this.onDropdownOpen('categories');
+                if (data.idfDocumentExists) {
+                    this.shipmentForm.get('nationalId')?.clearValidators();
+                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
+                } else {
+                    this.shipmentForm.get('nationalId')?.setValidators(Validators.required);
+                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
+                }
+                if (data.kraDocumentExists) {
+                    this.shipmentForm.get('kraPinCertificate')?.clearValidators();
+                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
+                } else {
+                    this.shipmentForm.get('kraPinCertificate')?.setValidators(Validators.required);
+                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
+                }
             },
             error: (err) => {
                 this.isLoadingMarineData = false;
@@ -301,6 +329,11 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
             selfAsImporter: [false],
             sumInsured: [null, [Validators.required, Validators.min(1)]],
             termsAndPolicyConsent: [false, Validators.requiredTrue],
+            firstName: ['', [Validators.required, CustomValidators.firstName]],
+            lastName: ['', [Validators.required, CustomValidators.lastName]],
+            email: ['', [Validators.required, CustomValidators.email]],
+            phoneNumber: ['', [Validators.required, CustomValidators.phoneNumber]],
+            searchPin: ['', [ CustomValidators.kraPin]],
         });
 
         // Step 2: Coverage Details (example fields)
@@ -379,6 +412,59 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
     this.filteredDischargePorts.next([]);
 
    }
+
+    toggleRequiredFields(isRequired: boolean) {
+
+        const fields = ['firstName', 'lastName', 'email', 'phoneNumber'];
+
+        fields.forEach(field => {
+            const control = this.quotationForm.get(field);
+
+            if (isRequired) {
+                control?.addValidators(Validators.required);
+            } else {
+                control?.removeValidators(Validators.required);
+            }
+
+            control?.updateValueAndValidity();
+        });
+    }
+
+    searchClientByPin(): void {
+        const pin = this.quotationForm.get('searchPin')?.value;
+
+        if (!pin || pin.trim() === '') {
+            this.submissionError = 'Please enter a KRA PIN to search.';
+            return;
+        }
+
+        this.isSearching = true;
+        this.submissionError = null;
+
+        this.quotationService.searchByPin(pin).subscribe({
+            next: (client) => {
+                this.isSearching = false;
+                console.log(client);
+
+                if (!client) {
+                    this.submissionError = 'Client not found.';
+                    return;
+                }
+
+                // Auto-fill form fields
+                this.quotationForm.patchValue({
+                    firstName: client.firstName,
+                    lastName: client.lastName,
+                    email: client.email,
+                    phoneNumber: client.mobile
+                });
+            },
+            error: (err) => {
+                this.isSearching = false;
+                this.submissionError = err?.message || 'Unable to fetch client details.';
+            }
+        });
+    }
 
     private fetchMarineProducts(): void {
         this.userService.getMarineProducts().subscribe({
@@ -727,6 +813,8 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
         this.destroy$.next();
         this.destroy$.complete();
         this.paymentPollingSub?.unsubscribe();
+        this._unsubscribeAll.next(null);
+        this._unsubscribeAll.complete();
     }
 
     onSelectOpen(opened: boolean) {
@@ -1389,6 +1477,19 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
         }
     }
 
+    preventSpaceInEmail(event: KeyboardEvent): void {
+        // Prevent space key from being entered in email fields
+        if (event.key === ' ' || event.code === 'Space' || event.keyCode === 32) {
+            event.preventDefault();
+        }
+    }
+
+    checkIfUserIsAgent():boolean {
+        const val = this.user && this.user.userType==='A';
+        console.log(val,this.user);
+        return val;
+    }
+
     formatAmount(value: number): string {
         if (!value && value !== 0) return '0';
 
@@ -1402,6 +1503,25 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
         }
     }
 
+    getInvalidControls(form: FormGroup, parentKey: string = ''): string[] {
+        let invalidFields: string[] = [];
+
+        Object.keys(form.controls).forEach(key => {
+            const control = form.get(key);
+            const fieldPath = parentKey ? `${parentKey}.${key}` : key;
+
+            if (control instanceof FormGroup) {
+                invalidFields = invalidFields.concat(
+                    this.getInvalidControls(control, fieldPath)
+                );
+            } else if (control && control.invalid) {
+                invalidFields.push(key);
+            }
+        });
+
+        return invalidFields;
+    }
+
 
     // Submit final quotation
     submitQuotation(): void {
@@ -1410,11 +1530,14 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
         if (!this.quotationForm.valid) {
             this.scrollToFirstError();
+            const invalidFields = this.getInvalidControls(this.quotationForm);
 
+            this.submissionError =
+                `Please fill in the following required fields:\n` +
+                invalidFields.join(', ');
 
 
             // Join them into a readable string
-            this.submissionError = `Please fill in the following required fields correctly`;
             this.isSaving = false;
             return;
         }
@@ -1490,6 +1613,16 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 this.quotationService.getQuoteById(''+this.quoteResult.id).subscribe({
                     next: (data) => {
                         this.quote = data;
+                        const authUser =  this.userService.getCurrentUser();
+                        if(authUser){
+                            const userType = authUser.userType;
+                            if(userType==='C'){
+                                this.fetchProspectDocuments(data.prospectId);
+                            }
+                            else if(userType==='A'){
+                                this.fetchProspectDocuments(data.prospectId);
+                            }
+                        }
                         this.isLoading = false;
                     },
                     error: (err) => {
@@ -1505,6 +1638,41 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
                 this.isSaving = false;
             },
+        });
+    }
+
+    fetchProspectDocuments(prospectId: number): void {
+        this.isLoadingMarineData = true;
+        this.userService.checkProspectDocument(prospectId).subscribe({
+            next: (data) => {
+                this.userDocs = data;
+                this.isLoadingMarineData = false;
+                this.shipmentForm.get('idNumber')?.setValue(data.idNo);
+                this.shipmentForm.get('streetAddress')?.setValue(data.postalAddress);
+                this.shipmentForm.get('postalCode')?.setValue(data.postalCode);
+                this.shipmentForm.get('firstName')?.setValue(data.firstName);
+                this.shipmentForm.get('lastName')?.setValue(data.lastName);
+                this.shipmentForm.get('emailAddress')?.setValue(data.emailAddress);
+                this.shipmentForm.get('phoneNumber')?.setValue(this.extractPhoneNumber(data.phoneNumber));
+                this.shipmentForm.get('kraPin')?.setValue(data.pinNo);
+                if (data.idfDocumentExists) {
+                    this.shipmentForm.get('nationalId')?.clearValidators();
+                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
+                } else {
+                    this.shipmentForm.get('nationalId')?.setValidators(Validators.required);
+                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
+                }
+                if (data.kraDocumentExists) {
+                    this.shipmentForm.get('kraPinCertificate')?.clearValidators();
+                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
+                } else {
+                    this.shipmentForm.get('kraPinCertificate')?.setValidators(Validators.required);
+                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
+                }
+            },
+            error: (err) => {
+                this.isLoadingMarineData = false;
+            }
         });
     }
 
@@ -1557,6 +1725,8 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                     field: key,
                     errors: this.shipmentForm.get(key)?.errors
                 }));
+
+            console.log('invalid fields...',invalidFields);
 
 
             this._snackBar.open('Please fill in all required fields correctly', 'Close', {

@@ -209,17 +209,6 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
         this.quoteId = this.route.snapshot.paramMap.get('quoteId')!;
         this.isLoadingMarineData = true;
 
-
-
-
-        const authUser =  this.userService.getCurrentUser();
-        if(authUser){
-            const userType = authUser.userType;
-            if(userType==='C'){
-                this.fetchUserDocuments();
-            }
-        }
-
         if(this.quoteId){
             this.loadQuotDetails();
         }
@@ -389,6 +378,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
         this.isLoading = true;
         this.quotationService.getQuoteById(this.quoteId).subscribe({
             next: (res) => {
+                console.log(res);
                 this.isLoading = false;
                 this.quote = res;
                 this.quoteResult =this.quoteResult = {
@@ -400,22 +390,17 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                     netprem: res.netprem,
                     id: res.quoteId
                 };
-                if (res.idDocumentExists) {
-                    this.shipmentForm.get('nationalId')?.clearValidators();
-                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
-                } else {
-                    this.shipmentForm.get('nationalId')?.setValidators(Validators.required);
-                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
-                }
-                if (res.kraDocumentExists) {
-                    this.shipmentForm.get('kraPinCertificate')?.clearValidators();
-                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
-                } else {
-                    this.shipmentForm.get('kraPinCertificate')?.setValidators(Validators.required);
-                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
+                const authUser =  this.userService.getCurrentUser();
+                if(authUser){
+                    const userType = authUser.userType;
+                    if(userType==='C'){
+                        this.fetchProspectDocuments(res.prospectId);
+                    }
+                    else if(userType==='A'){
+                        this.fetchProspectDocuments(res.prospectId);
+                    }
                 }
                 const selectedCategory = this.marineCategories.find(c => c.id === res.catId);
-                console.log('selected category ',selectedCategory);
                 this.shipmentForm.get('selectCategory')?.setValue(selectedCategory.catname);
                 this.onCategorySelected2(selectedCategory.catname);
                 this.onCategorySelectedVal(selectedCategory.catname).subscribe(() => {
@@ -1161,6 +1146,56 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                 this.shipmentForm.get('emailAddress')?.setValue(data.emailAddress);
                 this.shipmentForm.get('phoneNumber')?.setValue(this.extractPhoneNumber(data.phoneNumber));
                 this.shipmentForm.get('kraPin')?.setValue(data.pinNo);
+                if (data.idfDocumentExists) {
+                    this.shipmentForm.get('nationalId')?.clearValidators();
+                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
+                } else {
+                    this.shipmentForm.get('nationalId')?.setValidators(Validators.required);
+                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
+                }
+                if (data.kraDocumentExists) {
+                    this.shipmentForm.get('kraPinCertificate')?.clearValidators();
+                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
+                } else {
+                    this.shipmentForm.get('kraPinCertificate')?.setValidators(Validators.required);
+                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
+                }
+            },
+            error: (err) => {
+                this.isLoadingMarineData = false;
+            }
+        });
+    }
+
+    fetchProspectDocuments(prospectId: number): void {
+        this.isLoadingMarineData = true;
+        this.userService.checkProspectDocument(prospectId).subscribe({
+            next: (data) => {
+                console.log(data);
+                this.userDocs = data;
+                this.isLoadingMarineData = false;
+                this.shipmentForm.get('idNumber')?.setValue(data.idNo);
+                this.shipmentForm.get('streetAddress')?.setValue(data.postalAddress);
+                this.shipmentForm.get('postalCode')?.setValue(data.postalCode);
+                this.shipmentForm.get('firstName')?.setValue(data.firstName);
+                this.shipmentForm.get('lastName')?.setValue(data.lastName);
+                this.shipmentForm.get('emailAddress')?.setValue(data.emailAddress);
+                this.shipmentForm.get('phoneNumber')?.setValue(this.extractPhoneNumber(data.phoneNumber));
+                this.shipmentForm.get('kraPin')?.setValue(data.pinNo);
+                if (data.idfDocumentExists) {
+                    this.shipmentForm.get('nationalId')?.clearValidators();
+                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
+                } else {
+                    this.shipmentForm.get('nationalId')?.setValidators(Validators.required);
+                    this.shipmentForm.get('nationalId')?.updateValueAndValidity();
+                }
+                if (data.kraDocumentExists) {
+                    this.shipmentForm.get('kraPinCertificate')?.clearValidators();
+                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
+                } else {
+                    this.shipmentForm.get('kraPinCertificate')?.setValidators(Validators.required);
+                    this.shipmentForm.get('kraPinCertificate')?.updateValueAndValidity();
+                }
             },
             error: (err) => {
                 this.isLoadingMarineData = false;

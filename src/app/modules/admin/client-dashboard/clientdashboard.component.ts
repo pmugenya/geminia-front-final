@@ -10,7 +10,7 @@ import { MatTableModule } from '@angular/material/table';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
-import { PendingQuote, PolicyRecord, RecentActivity } from '../../../core/user/user.types';
+import { CoverageData, PendingQuote, PolicyRecord, RecentActivity } from '../../../core/user/user.types';
 import { UserService } from '../../../core/user/user.service';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
@@ -19,18 +19,8 @@ import { QuoteService } from '../../../core/services/quote.service';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { QuoteProductDialogsComponent } from '../quote-product-dialog/quote-product-dialog.component';
-
-// Chart options interface
-interface ApexChartOptions {
-    chart: any;
-    colors: string[];
-    fill: any;
-    series: any[];
-    stroke: any;
-    tooltip: any;
-    xaxis: any;
-    yaxis: any;
-}
+import { FuseAlertComponent, FuseAlertService } from '../../../../@fuse/components/alert';
+import { ApexOptions } from 'apexcharts';
 
 
 // Claim interface for client
@@ -78,6 +68,7 @@ interface ClientDashboardData {
     encapsulation: ViewEncapsulation.None,
     standalone: true,
     imports: [
+        FuseAlertComponent,
         CommonModule,
         MatButtonModule,
         MatIconModule,
@@ -97,6 +88,8 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
     @ViewChild(MatPaginator) policyPaginator!: MatPaginator;
     @ViewChild('myPoliciesTable', { read: MatSort }) myPoliciesSort!: MatSort;
 
+    clientCoverage: any[] = [];
+
     // Dashboard data for client
     data: ClientDashboardData = {
         myPolicies: {
@@ -115,7 +108,7 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
         upcomingPayments: {
             totalDue: 1200,
             nextPaymentDate: '2024-02-15',
-            nextPaymentAmount: 400
+            nextPaymentAmount: 0
         },
         portfolio: {
             property: 500000,
@@ -140,10 +133,38 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
     isInitialLoad = true;
 
     // Coverage Distribution Chart Options
-    coverageDistributionOptions: ApexChartOptions;
+    coverageDistributionOptions: ApexOptions = {
+        chart: {
+            type: 'donut',
+            height: 300,
+            toolbar: { show: false }
+        },
+        series: [],
+        labels: [],
+        colors: ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B'],
+        fill: { opacity: 0.9 },
+        stroke: { width: 0 },
+        tooltip: {
+            y: { formatter: (value: number) => this.formatCurrency(value) }
+        }
+    };
 
     // Premium Breakdown Chart Options
-    premiumBreakdownOptions: ApexChartOptions;
+    premiumBreakdownOptions: ApexOptions = {
+        chart: {
+            type: 'bar',
+            height: 200,
+            toolbar: { show: false },
+            fontFamily: 'inherit'
+        },
+        colors: ['#3B82F6'],
+        fill: { opacity: 0.8 },
+        series: [{ name: 'Annual Premium', data: [] }],
+        stroke: { width: 0 },
+        tooltip: { theme: 'dark' },
+        xaxis: { categories: [], labels: { style: { colors: '#6B7280' } } },
+        yaxis: { labels: { formatter: (val) => this.formatCurrency(val) } }
+    };
     pendingQuotes: PendingQuote[] = [];
     recentActivities: RecentActivity[] = [];
     totalRecords = 0;
@@ -159,88 +180,16 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
                   private cdr: ChangeDetectorRef,
                   private router: Router,
                   private dialog: MatDialog,
+                  private fuseAlertService: FuseAlertService,
                   private quoteService: QuoteService) {
-        // Initialize data sources
 
-        // Initialize coverage distribution chart
-        this.coverageDistributionOptions = {
-            chart: {
-                type: 'donut',
-                height: 300,
-                fontFamily: 'inherit',
-                toolbar: {
-                    show: false
-                }
-            },
-            colors: ['#3B82F6', '#10B981', '#8B5CF6', '#F59E0B'],
-            fill: {
-                opacity: 0.9
-            },
-            series: [500000, 300000, 250000, 200000],
-            stroke: {
-                width: 0
-            },
-            tooltip: {
-                theme: 'dark',
-                y: {
-                    formatter: (value: number) => {
-                        return this.formatCurrency(value);
-                    }
-                }
-            },
-            xaxis: {
-                categories: ['Property', 'Health', 'Auto', 'Life']
-            },
-            yaxis: {
-                categories: ['Property', 'Health', 'Auto', 'Life']
-            }
-        };
-
-        // Initialize premium breakdown chart
-        this.premiumBreakdownOptions = {
-            chart: {
-                type: 'bar',
-                height: 200,
-                fontFamily: 'inherit',
-                toolbar: {
-                    show: false
-                }
-            },
-            colors: ['#3B82F6'],
-            fill: {
-                opacity: 0.8
-            },
-            series: [{
-                name: 'Annual Premium',
-                data: [1200, 800, 2000, 800]
-            }],
-            stroke: {
-                width: 0
-            },
-            tooltip: {
-                theme: 'dark'
-            },
-            xaxis: {
-                categories: ['Home', 'Auto', 'Health', 'Life'],
-                labels: {
-                    style: {
-                        colors: '#6B7280'
-                    }
-                }
-            },
-            yaxis: {
-                labels: {
-                    formatter: (value: number) => {
-                        return this.formatCurrency(value);
-                    }
-                }
-            }
-        };
     }
 
     ngOnInit(): void {
+        this.fuseAlertService.dismiss('quoteDownloadError');
         this.loadDashboardData();
         this.loadRecentActivities();
+
     }
 
     ngAfterViewInit(): void {
@@ -272,6 +221,7 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
         this.cdr.detectChanges();
         const quotesOffset = this.quotesPage * this.quotesPageSize;
         const policiesOffset = this.policiesPage * this.policiesPageSize;
+        this.getCoverageDistribution();
         forkJoin({
             quotes: this.userService.getClientQuotes(quotesOffset, this.quotesPageSize),
             policies: this.userService.getClientPolicies(policiesOffset, this.policiesPageSize)
@@ -399,8 +349,8 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
     /**
      * Format currency
      */
-    formatCurrency(value: number, currency: string = 'USD'): string {
-        return new Intl.NumberFormat('en-US', {
+    formatCurrency(value: number, currency: string = 'KSH'): string {
+        return new Intl.NumberFormat('en-KE', {
             style: 'currency',
             currency: currency,
             minimumFractionDigits: 0,
@@ -494,10 +444,48 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
     /**
      * Download policy document
      */
-    downloadPolicy(policy: PendingQuote): void {
-        console.log('Downloading policy document for:', policy.refno);
-        // Implement document download
+    downloadQuote(quote: PendingQuote): void {
+        if (!quote.quoteId) {
+            this.fuseAlertService.show('quoteDownloadError');
+            return;
+        }
+        this.userService.downloadQuote(''+quote.quoteId).subscribe({
+            next: (base64String) => {
+                try {
+                    console.log('Base64 response:', base64String);
+
+                    const base64 = base64String.split(',')[1] || base64String;
+                    const byteCharacters = atob(base64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'application/pdf' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'quote.pdf';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+
+                    // Optional: show success
+                } catch (error) {
+                    console.error('Error decoding base64:', error);
+                    this.fuseAlertService.show('quoteDownloadError');
+                    setTimeout(() => this.fuseAlertService.dismiss('quoteDownloadError'), 4000);
+                }
+            },
+            error: (err) => {
+                console.error('Download request failed:', err);
+                this.fuseAlertService.show('quoteDownloadError');
+                setTimeout(() => this.fuseAlertService.dismiss('quoteDownloadError'), 4000);
+            }
+        });
     }
+
+
 
     buyPolicy(policy: PendingQuote): void {
         console.log('Downloading policy document for:', policy.refno);
@@ -554,30 +542,41 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
     /**
      * Get coverage distribution percentages
      */
-    getCoverageDistribution(): { type: string; amount: number; percentage: number }[] {
-        const total = this.data.portfolio.total;
-        return [
-            {
-                type: 'Property',
-                amount: this.data.portfolio.property,
-                percentage: (this.data.portfolio.property / total) * 100
+    getCoverageDistribution() {
+        this.quoteService.getClientCoverage().subscribe({
+            next: (data) => {
+                this.clientCoverage = data;
+                console.log('Client coverage:', data);
+                if (data && Array.isArray(data)) {
+                    const categories = data.map((x: any) => x.type);
+                    const values = data.map((x: any) => x.amount);
+                    this.coverageDistributionOptions = {
+                        ...this.coverageDistributionOptions,
+                        series: values,
+                        labels: categories
+                    };
+
+                    this.premiumBreakdownOptions = {
+                        ...this.premiumBreakdownOptions,
+                        series: [
+                            {
+                                name: 'Annual Premium',
+                                data: values
+                            }
+                        ],
+                        xaxis: {
+                            ...this.premiumBreakdownOptions.xaxis,
+                            categories
+                        }
+                    };
+                }
+
+                this.cdr.detectChanges();
             },
-            {
-                type: 'Health',
-                amount: this.data.portfolio.health,
-                percentage: (this.data.portfolio.health / total) * 100
-            },
-            {
-                type: 'Auto',
-                amount: this.data.portfolio.auto,
-                percentage: (this.data.portfolio.auto / total) * 100
-            },
-            {
-                type: 'Life',
-                amount: this.data.portfolio.life,
-                percentage: (this.data.portfolio.life / total) * 100
+            error: (err) => {
+                console.error('Error loading coverage:', err);
             }
-        ];
+        });
     }
 
 

@@ -65,9 +65,10 @@ export class ViewQuote implements OnInit,OnDestroy {
     }
 
     ngOnInit(): void {
-        this._fuseAlertService.dismiss('quoteDownloadError');
+
         this.quoteId = this.route.snapshot.paramMap.get('quoteId')!;
         this.loadQuote(this.quoteId);
+        this._fuseAlertService.dismiss('quoteDownloadError');
 
     }
 

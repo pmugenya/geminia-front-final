@@ -20,8 +20,10 @@
             </g>
         </svg>
 
+        <marine-quick-quote  *ngIf="showMarineQuote"
+                             (closeQuote)="showMarineQuote = false"></marine-quick-quote>
         <!-- Quick Quote Content -->
-        <div class="relative z-10 w-full max-w-md text-left">
+        <div class="relative z-10 w-full max-w-md text-left" *ngIf="!showMarineQuote">
             <h2 class="text-4xl font-extrabold mb-6">Get a Quick Quote</h2>
             <p class="opacity-90 mb-8 text-lg">
                 Start instantly — no login required. Choose a product below to begin.
@@ -31,8 +33,10 @@
                 <button
                     mat-stroked-button
                     class="bg-white text-[#006c68] font-semibold py-3 text-lg hover:bg-gray-100 transition-all"
+                    (click)="toggleMarineQuote()"
                 >
-                    <mat-icon svgIcon="heroicons_outline:ship" class="mr-3"></mat-icon>
+                    <mat-icon svgIcon="heroicons_outline:truck" class="mr-3"
+                    ></mat-icon>
                     Marine Insurance
                 </button>
 
@@ -48,7 +52,7 @@
                     mat-stroked-button
                     class="bg-white text-[#006c68] font-semibold py-3 text-lg hover:bg-gray-100 transition-all"
                 >
-                    <mat-icon svgIcon="heroicons_outline:plane" class="mr-3"></mat-icon>
+                    <mat-icon svgIcon="heroicons_outline:paper-airplane" class="mr-3"></mat-icon>
                     Travel Insurance
                 </button>
             </div>

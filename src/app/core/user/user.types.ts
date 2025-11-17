@@ -24,6 +24,7 @@ export interface CreateUserObject {
     passwordConfirm: string,
     clientType: string,
     docnumber: string,
+    kraPin: string,
     pinNumber: string,
     mobileno: string,
     email: string,
@@ -199,4 +200,10 @@ export interface RecentActivity {
     description: string;
     dateCreated: string;
     amount?: number;
+}
+
+export interface CoverageData {
+    type: string;
+    amount: number;
+    percentage: number;
 }

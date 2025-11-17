@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
+import { AfterViewInit, Component, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
 import {
     AbstractControl, FormBuilder,
     FormGroup,
@@ -15,7 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { fuseAnimations } from '@fuse/animations';
 import { FuseAlertComponent, FuseAlertType } from '@fuse/components/alert';
 import { AuthService } from 'app/core/auth/auth.service';
@@ -23,6 +23,7 @@ import { finalize } from 'rxjs';
 import { CreateUserObject } from '../../../core/user/user.types';
 import { MatRadioModule } from '@angular/material/radio';
 import { CommonModule } from '@angular/common';
+import { MarineQuickQuoteComponent } from '../../admin/quick-quote/marine-quick-quote.component';
 
 
 export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
@@ -50,12 +51,13 @@ export const passwordMatchValidator: ValidatorFn = (control: AbstractControl): V
         MatCheckboxModule,
         MatRadioModule,
         MatProgressSpinnerModule,
+        MarineQuickQuoteComponent
     ],
 })
 
 
 
-export class AuthSignUpComponent implements OnInit {
+export class AuthSignUpComponent implements OnInit,AfterViewInit  {
     @ViewChild('signUpNgForm') signUpNgForm: NgForm;
 
     alert: { type: FuseAlertType; message: string } = {
@@ -68,6 +70,9 @@ export class AuthSignUpComponent implements OnInit {
     showPassword = false;
     showTermsModal = false;
     showDataPrivacyModal = false;
+    showMarineQuote = false;
+    loading = false;
+
 
     /**
      * Constructor
@@ -75,7 +80,8 @@ export class AuthSignUpComponent implements OnInit {
     constructor(
         private _authService: AuthService,
         private fb: FormBuilder,
-        private _router: Router
+        private _router: Router,
+        private _activatedRoute: ActivatedRoute,
     ) {}
 
     // -----------------------------------------------------------------------------------------------------
@@ -88,7 +94,7 @@ export class AuthSignUpComponent implements OnInit {
     ngOnInit(): void {
         // Create the form
         this.registerForm = this.fb.group({
-            accountType: ['C', Validators.required],
+            accountType: ['', Validators.required],
             fullName: ['', [Validators.required, this.fullNameValidator]],
             email: ['', [Validators.required, Validators.email]],
             kraPin: ['', [Validators.required, this.kraPinValidator]],
@@ -99,7 +105,58 @@ export class AuthSignUpComponent implements OnInit {
             confirmPassword: ['', Validators.required],
             agreementAccepted: [false, Validators.requiredTrue],
         }, { validators: passwordMatchValidator });
+
+        this.registerForm.get('accountType')!.valueChanges.subscribe((value) => {
+            this.setConditionalValidators(value);
+        });
+
+        // Initialize validators for default value
+        this.setConditionalValidators(this.registerForm.get('accountType')!.value);
     }
+
+    ngAfterViewInit(): void {
+        // set client type after view is ready
+
+    }
+
+
+    private setConditionalValidators(accountType: string) {
+        const fullName = this.registerForm.get('fullName')!;
+        const email = this.registerForm.get('email')!;
+        const kraPin = this.registerForm.get('kraPin')!;
+        const phoneNumber = this.registerForm.get('phoneNumber')!;
+        const iraNumber = this.registerForm.get('iraNumber')!;
+        const pinNumber = this.registerForm.get('pinNumber')!;
+
+        if (accountType === 'C') { // Individual
+            fullName.setValidators([Validators.required, this.fullNameValidator]);
+            email.setValidators([Validators.required, Validators.email]);
+            kraPin.setValidators([Validators.required, this.kraPinValidator]);
+            phoneNumber.setValidators([Validators.required, this.phoneNumberValidator]);
+
+            iraNumber.clearValidators();
+            pinNumber.clearValidators();
+        } else if (accountType === 'A') { // Intermediary
+            iraNumber.setValidators([Validators.required]);
+            kraPin.setValidators([Validators.required, this.kraPinValidator]);
+            // pinNumber.setValidators([Validators.required]);
+
+            fullName.clearValidators();
+            email.clearValidators();
+            kraPin.clearValidators();
+            phoneNumber.clearValidators();
+            pinNumber.clearValidators();
+        }
+
+        // Update validity after changing validators
+        fullName.updateValueAndValidity();
+        email.updateValueAndValidity();
+        kraPin.updateValueAndValidity();
+        phoneNumber.updateValueAndValidity();
+        iraNumber.updateValueAndValidity();
+        pinNumber.updateValueAndValidity();
+    }
+
 
     // -----------------------------------------------------------------------------------------------------
     // @ Public methods
@@ -109,6 +166,7 @@ export class AuthSignUpComponent implements OnInit {
 
     register(): void {
         if (this.registerForm.invalid || this.registerForm.disabled) return;
+        this.loading = true;
         this.registerForm.disable();
         const formValue = this.registerForm.getRawValue();
         const user: CreateUserObject = {
@@ -116,22 +174,34 @@ export class AuthSignUpComponent implements OnInit {
             passwordConfirm: formValue.confirmPassword,
             pinNumber: formValue.kraPin,
             mobileno: formValue.phoneNumber,
+            kraPin: formValue.kraPin,
             docnumber: formValue.iraNumber,
             firstName: formValue.fullName,
             email: formValue.email,
             clientType: formValue.accountType
         };
 
+
+
         this._authService.createUser(user).pipe(
             finalize(() => this.registerForm.enable())
         ).subscribe({
             next: () => {
-                this.alert = { type: 'success', message: 'Registration successful! Please sign in.'};
+                this.alert = { type: 'success', message: 'Registration successful! Redirecting to sign in.'};
                 this.showAlert = true;
                 this.formType = 'login';
+                this.loading = false;
                 setTimeout(() => this.showAlert = false, 5000);
+                const redirectURL =
+                    this._activatedRoute.snapshot.queryParamMap.get(
+                        'redirectURL'
+                    ) || '/signed-in-redirect';
+
+                // Navigate to the redirect url
+                this._router.navigateByUrl(redirectURL);
             },
             error: (err) => {
+                this.loading = false;
                 this.alert = { type: 'error', message: err.error?.errors?.[0]?.developerMessage || 'Registration failed.' };
                 this.showAlert = true;
             },
@@ -189,4 +259,9 @@ export class AuthSignUpComponent implements OnInit {
 
     togglePasswordVisibility(): void { this.showPassword = !this.showPassword; }
     getCurrentDate(): string { return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }); }
+
+
+    toggleMarineQuote() {
+        this.showMarineQuote = true;
+    }
 }

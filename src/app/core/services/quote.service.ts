@@ -21,6 +21,12 @@ export class QuoteService {
         return this.http.get<RecentActivity[]>(`${this.baseUrl}/recentactivity`);
     }
 
+    searchByPin(pin: string): Observable<any> {
+        return this.http.get(`${this.baseUrl}/self/prospects/prospectByPin`, {
+            params: { pinNo: pin }
+        });
+    }
+
     createApplication(
         formData:FormData
     ): Observable<any> {
@@ -77,6 +83,11 @@ export class QuoteService {
      */
     getQuoteById(quoteId: string): Observable<QuotesData> {
         return this.http.get<any>(`${this.baseUrl}/quote/singlequote/${quoteId}`);
+    }
+
+
+    getClientCoverage(): Observable<any> {
+        return this.http.get(`${this.baseUrl}/dashboard/clientcoverage`);
     }
 
     /**

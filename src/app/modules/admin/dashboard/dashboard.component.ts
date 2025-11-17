@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewEncapsulation, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation, ViewChild, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { CommonModule } from '@angular/common';
@@ -9,6 +9,11 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { MatDivider } from '@angular/material/divider';
+import { MatPaginator, PageEvent } from '@angular/material/paginator';
+import { PolicyRecord } from '../../../core/user/user.types';
+import { UserService } from '../../../core/user/user.service';
+import { finalize, forkJoin } from 'rxjs';
+import { Router } from '@angular/router';
 
 // Chart options interface
 interface ApexChartOptions {
@@ -21,14 +26,6 @@ interface ApexChartOptions {
     xaxis: any;
 }
 
-// Policy interface
-interface Policy {
-    policyNumber: string;
-    productType: string;
-    insuredName: string;
-    premium: number;
-    status: 'active' | 'pending' | 'expired' | 'renewal';
-}
 
 // Dashboard data interface
 interface DashboardData {
@@ -76,10 +73,12 @@ interface DashboardData {
         MatTableModule,
         NgApexchartsModule,
         MatDivider,
+        MatPaginator,
     ],
 })
-export class InsuranceDashboardComponent implements OnInit {
-    @ViewChild('recentPoliciesTable', { read: MatSort }) recentPoliciesSort!: MatSort;
+export class InsuranceDashboardComponent implements OnInit,AfterViewInit {
+    @ViewChild(MatPaginator) policyPaginator!: MatPaginator;
+    @ViewChild('myPoliciesTable', { read: MatSort }) myPoliciesSort!: MatSort;
 
     // Dashboard data
     data: DashboardData = {
@@ -114,61 +113,26 @@ export class InsuranceDashboardComponent implements OnInit {
     };
 
     // Recent policies table
-    recentPoliciesDataSource: MatTableDataSource<Policy>;
-    recentPoliciesTableColumns: string[] = ['policyNumber', 'productType', 'insuredName', 'premium', 'status'];
+    myPolicyDataSource = new MatTableDataSource<PolicyRecord>();
+    myPolicyTableColumns: string[] = ['erprefno','clientName','productName','netpremium','coverFrom','coverTo','actions'];
 
-    // Sample policies data
-    samplePolicies: Policy[] = [
-        {
-            policyNumber: 'POL-2024-001',
-            productType: 'Property',
-            insuredName: 'John Smith',
-            premium: 2500,
-            status: 'active'
-        },
-        {
-            policyNumber: 'POL-2024-002',
-            productType: 'Health',
-            insuredName: 'Sarah Johnson',
-            premium: 1800,
-            status: 'active'
-        },
-        {
-            policyNumber: 'POL-2024-003',
-            productType: 'Auto',
-            insuredName: 'Mike Davis',
-            premium: 1200,
-            status: 'renewal'
-        },
-        {
-            policyNumber: 'POL-2024-004',
-            productType: 'Property',
-            insuredName: 'Emma Wilson',
-            premium: 3200,
-            status: 'active'
-        },
-        {
-            policyNumber: 'POL-2024-005',
-            productType: 'Health',
-            insuredName: 'Robert Brown',
-            premium: 2100,
-            status: 'pending'
-        },
-        {
-            policyNumber: 'POL-2023-156',
-            productType: 'Auto',
-            insuredName: 'Lisa Thompson',
-            premium: 950,
-            status: 'expired'
-        }
-    ];
+    pageSizeOptions = [10, 20,50];
+    currentPage = 0;
+
+    isLoading = false;
+    isInitialLoad = true;
+
+    policiesTotalRecords = 0;
+    policiesPage = 0;
+    policiesPageSize = 10;
 
     // Policy Performance Chart Options
     policyPerformanceOptions: ApexChartOptions;
 
-    constructor() {
+    constructor(private userService: UserService,
+                private cdr: ChangeDetectorRef,
+                private router: Router,) {
         // Initialize the data source for recent policies
-        this.recentPoliciesDataSource = new MatTableDataSource(this.samplePolicies);
 
         // Initialize chart options
         this.policyPerformanceOptions = {
@@ -238,16 +202,88 @@ export class InsuranceDashboardComponent implements OnInit {
         };
     }
 
+
+
     ngOnInit(): void {
-        // You can add initialization logic here
-        // For example, fetching data from APIs
+        this.loadPolicyData();
     }
 
     ngAfterViewInit(): void {
-        // Set the sort for the recent policies table
-        if (this.recentPoliciesDataSource) {
-            this.recentPoliciesDataSource.sort = this.recentPoliciesSort;
+
+        if(this.myPolicyDataSource){
+            this.myPolicyDataSource.paginator = this.policyPaginator;
+            this.myPolicyDataSource.sort = this.myPoliciesSort;
         }
+    }
+
+
+    loadPolicyData(): void {
+        this.isLoading = true;
+        this.cdr.detectChanges();
+        const policiesOffset = this.policiesPage * this.policiesPageSize;
+        forkJoin({
+            policies: this.userService.getClientPolicies(policiesOffset, this.policiesPageSize)
+        })
+            .pipe(
+                finalize(() => {
+                    this.isLoading = false;
+                    this.isInitialLoad = false;
+                    this.cdr.detectChanges();
+                })
+            ).subscribe({
+            next: ({ policies }) => {
+
+                console.log(policies);
+                const policiesData = policies.pageItems.map((p: any) => ({
+                    ...p,
+                    coverFrom: this.toDate(p.dischageDate),
+                    clientName: `${p.firstname} ${p.lastname}`,
+                    coverTo: this.toDate(p.dateArrival),
+                }));
+                this.myPolicyDataSource.data =  policiesData;
+                this.policiesTotalRecords = policies.totalFilteredRecords;
+
+            },
+            error: (err) => {
+                console.error('Error loading dashboard data', err);
+            },
+        });
+    }
+
+
+    private toDate(dateArray?: number[]): Date | null {
+        if (!dateArray || dateArray.length < 3) return null;
+        const [year, month, day] = dateArray;
+        return new Date(year, month - 1, day); // month is 0-based in JS
+    }
+
+    isExpiringSoon(renewalDate: string): boolean {
+        return this.getDaysUntilRenewal(renewalDate) <= 30;
+    }
+
+    getDaysUntilRenewal(renewalDate: string): number {
+        const today = new Date();
+        const renewal = new Date(renewalDate);
+        const diffTime = renewal.getTime() - today.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    formatDate(dateString: string): string {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+
+    viewPolicy(policy: PolicyRecord): void {
+        this.router.navigate(['/viewmarinequote', policy.id]);
+    }
+
+    onPoliciesPageChange(event: PageEvent): void {
+        this.policiesPage = event.pageIndex;
+        this.policiesPageSize = event.pageSize;
+        this.loadPolicyData();
     }
 
     /**
@@ -260,15 +296,7 @@ export class InsuranceDashboardComponent implements OnInit {
         return item.id || index;
     }
 
-    /**
-     * Filter policies based on search input
-     *
-     * @param event
-     */
-    filterPolicies(event: Event): void {
-        const filterValue = (event.target as HTMLInputElement).value;
-        this.recentPoliciesDataSource.filter = filterValue.trim().toLowerCase();
-    }
+
 
     /**
      * Get status color class

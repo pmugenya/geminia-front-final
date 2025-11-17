@@ -1,14 +1,13 @@
-<!-- Button -->
-<button mat-icon-button [matMenuTriggerFor]="userActions">
-    <span class="relative">
-<!--        @if (showAvatar && user.avatar) {-->
-<!--            <img class="h-7 w-7 rounded-full" [src]="user.avatar" />-->
-<!--        }-->
-<!--        @if (!showAvatar || !user.avatar) {-->
+<div class="flex items-center gap-2">
+    <span class="font-medium text-sm">{{ user.name }}</span>
+
+    <!-- Existing user button -->
+    <button mat-icon-button [matMenuTriggerFor]="userActions">
+        <span class="relative">
             <mat-icon [svgIcon]="'heroicons_outline:user-circle'"></mat-icon>
-<!--        }-->
-    </span>
-</button>
+        </span>
+    </button>
+</div>
 
 <mat-menu [xPosition]="'before'" #userActions="matMenu">
     <button mat-menu-item>

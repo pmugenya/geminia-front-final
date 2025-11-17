@@ -133,9 +133,6 @@ export class AuthService {
                     loginTime: Date.now(),
                     phoneNumber: response.phoneNumber || response.phone || ''
                 };
-
-                console.log('👤 Setting user data:', userData);
-
                 sessionStorage.setItem(this.STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
                 this._userService.setCurrentUser(userData, this.accessToken);
 

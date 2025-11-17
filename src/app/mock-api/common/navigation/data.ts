@@ -1,14 +1,37 @@
 /* eslint-disable */
 import { FuseNavigationItem } from '@fuse/components/navigation';
 
-export const defaultNavigation: FuseNavigationItem[] = [
+const STORAGE_KEYS = {
+    USER_DATA: 'geminia_user_data'
+};
+
+
+const checkPermission = (permName: string): boolean => {
+       const hasPermission = false;
+       const currentUser = JSON.parse(sessionStorage.getItem(STORAGE_KEYS.USER_DATA));
+       if(currentUser && currentUser.userType===permName) {
+          return true;
+       }
+    return hasPermission;
+};
+
+const PERM_ARR: FuseNavigationItem[] = [
 
     {
         id   : 'dashboard',
         title: 'Dashboard',
         type : 'basic',
         icon: 'heroicons_outline:home',
-        link : '/dashboard'
+        link : '/dashboard',
+        hidden: item => !checkPermission('C')
+    },
+    {
+        id   : 'dashboard',
+        title: 'Dashboard',
+        type : 'basic',
+        icon: 'heroicons_outline:home',
+        link : '/agentdashboard',
+        hidden: item => !checkPermission('A')
     },
     {
         id: 'quote-management',
@@ -18,50 +41,46 @@ export const defaultNavigation: FuseNavigationItem[] = [
         children: [
             {
                 id: 'marinequote',
-                title: 'New Marine Quote',
+                title: 'Marine Quote',
                 type: 'basic',
                 icon: 'heroicons_outline:globe-alt',
                 link: '/marinequote'
             },
             {
                 id: 'example2',
-                title: 'New Travel Quote',
+                title: 'Travel Quote',
                 type: 'basic',
                 icon: 'heroicons_outline:map',
                 link: '/example'
             },
+            {
+                id: 'quotlisting',
+                title: 'My Quotes',
+                type: 'basic',
+                icon: 'heroicons_outline:clipboard-document-list',
+                link: '/clientquotes'
+            },
         ]
     },
-    // {
-    //     id: 'user-management',
-    //     title: 'Policies',
-    //     type: 'collapsable',
-    //     icon: 'heroicons_outline:user-group',
-    //     children: [
-    //         {
-    //             id: 'example',
-    //             title: 'Marine',
-    //             type: 'basic',
-    //             icon: 'heroicons_outline:user-group',
-    //             link: '/example'
-    //         },
-    //         {
-    //             id: 'example2',
-    //             title: 'Travel',
-    //             type: 'basic',
-    //             icon: 'heroicons_outline:user-group',
-    //             link: '/example'
-    //         },
-    //     ]
-    // },
-    // {
-    //     id   : 'example',
-    //     title: 'Claims',
-    //     type : 'basic',
-    //     icon: 'heroicons_outline:user-group',
-    //     link : '/example'
-    // },
+    {
+        id: 'policy-management',
+        title: 'Policies',
+        type: 'collapsable',
+        icon: 'heroicons_outline:document-text',
+        children: [
+            {
+                id: 'policylisting',
+                title: 'My Policies',
+                type: 'basic',
+                icon: 'heroicons_outline:clipboard-document-list',
+                link: '/clientpolicies'
+            },
+        ]
+    },
 ];
+
+export const defaultNavigation: FuseNavigationItem[] = PERM_ARR ;
+
 export const compactNavigation: FuseNavigationItem[] = [
     {
         id   : 'example',

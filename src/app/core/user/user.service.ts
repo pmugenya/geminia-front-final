@@ -84,6 +84,14 @@ export class UserService {
         return this._httpClient.get<any>(`${this.baseUrl}/quote/clientquotes`, { params });
     }
 
+    getAgentQuotes(offset: number, limit: number): Observable<any> {
+        let params = new HttpParams()
+            .set('offset', offset.toString())
+            .set('limit', limit.toString());
+
+        return this._httpClient.get<any>(`${this.baseUrl}/quote/agentquotes`, { params });
+    }
+
     getSingleQuote(quoteId: string): Observable<any> {
         return this._httpClient.get<any>(`${this.baseUrl}/quote/singlequote/${quoteId}`);
     }
@@ -187,6 +195,10 @@ export class UserService {
         return this._httpClient.get<UserDocumentData>(`${this.baseUrl}/users/userdocuments`).pipe(
             catchError(this.handleError)
         );
+    }
+
+    checkProspectDocument(prospectId: number): Observable<UserDocumentData> {
+        return this._httpClient.get<any>(`${this.baseUrl}/users/prospectdocuments/${prospectId}`);
     }
 
     private handleError(error: HttpErrorResponse) {

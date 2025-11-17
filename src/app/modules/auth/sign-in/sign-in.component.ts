@@ -21,6 +21,7 @@ import { FuseAlertComponent, FuseAlertType } from '@fuse/components/alert';
 import { AuthService } from 'app/core/auth/auth.service';
 import { finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
+import { MarineQuickQuoteComponent } from '../../admin/quick-quote/marine-quick-quote.component';
 
 @Component({
     selector: 'auth-sign-in',
@@ -39,10 +40,15 @@ import { CommonModule } from '@angular/common';
         MatIconModule,
         MatCheckboxModule,
         MatProgressSpinnerModule,
+        MarineQuickQuoteComponent
     ],
 })
 export class AuthSignInComponent implements OnInit,OnDestroy {
     @ViewChild('signInNgForm') signInNgForm: NgForm;
+
+    private readonly STORAGE_KEYS = {
+        USER_DATA: 'geminia_user_data'
+    };
 
     alert: { type: FuseAlertType; message: string } = {
         type: 'success',
@@ -52,6 +58,7 @@ export class AuthSignInComponent implements OnInit,OnDestroy {
     showAlert: boolean = false;
     loginState: 'credentials' | 'otp' = 'credentials';
     otpCountdown: number = 0;
+    showMarineQuote = false;
     private otpCountdownInterval: any;
 
     /**
@@ -171,14 +178,23 @@ export class AuthSignInComponent implements OnInit,OnDestroy {
             finalize(() => this.signInForm.enable())
         ).subscribe({
             next: () => {
-                console.log('redirect to home page....');
-                // Redirect to saved URL or default dashboard
-                const redirectURL =
-                    this._activatedRoute.snapshot.queryParamMap.get(
-                        'redirectURL'
-                    ) || '/signed-in-redirect';
+                const userDataString = sessionStorage.getItem(this.STORAGE_KEYS.USER_DATA);
+                let redirectURL = this._activatedRoute.snapshot.queryParamMap.get('redirectURL');
 
-                // Navigate to the redirect url
+                if (!redirectURL && userDataString) {
+                    const userData = JSON.parse(userDataString);
+                    // No saved URL, choose based on client type
+                    if (userData.userType === 'C') {
+                        redirectURL = '/dashboard';
+                    } else if (userData.userType === 'A') {
+                        redirectURL = '/agentdashboard';
+                    } else {
+                        // fallback
+                        redirectURL = '/dashboard';
+                    }
+                }
+
+                // Navigate to the redirect URL
                 this._router.navigateByUrl(redirectURL);
             },
             error: (err) => {
@@ -211,5 +227,9 @@ export class AuthSignInComponent implements OnInit,OnDestroy {
             clearInterval(this.otpCountdownInterval);
             this.otpCountdownInterval = null;
         }
+    }
+
+    toggleMarineQuote() {
+        this.showMarineQuote = true;
     }
 }
