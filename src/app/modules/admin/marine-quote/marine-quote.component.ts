@@ -56,6 +56,7 @@ import { DateAdapter, MAT_DATE_FORMATS, MAT_DATE_LOCALE, MatNativeDateModule } f
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MY_DATE_FORMATS } from '../../../core/directives/date-formats';
 import { MomentDateAdapter } from '@angular/material-moment-adapter';
+import { Router } from '@angular/router';
 
 @Component({
     selector: 'example',
@@ -169,6 +170,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
     countyPage = 0;
     isLoadingCounties = false;
     pageSize = 50;
+    applicationId: number;
     isLoadingCategories = false;
     isSearching = false;
     categories: any[] = [];
@@ -199,6 +201,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 private userService: UserService,
                 private quotationService: QuoteService,
                 private _fuseAlertService: FuseAlertService,
+                private router: Router,
                 private datePipe: DatePipe,
                 private _snackBar: MatSnackBar) { }
 
@@ -1788,6 +1791,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
                 // Generate reference number for M-Pesa payment
                 const refNo = applicationResponse?.transactionId;
+                this.applicationId = applicationResponse?.entityId;
                 this.isMakePaymentNow = true;
                 this.paymentRefNo = refNo;
                 this.isSubmitting = false;
@@ -1860,6 +1864,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                          this.paymentSuccess = true;
                          this._snackBar.open('Payment successful!', 'Close', { duration: 4000 });
                          this.paymentPollingSub?.unsubscribe();
+                         this.router.navigate(['/viewmarinequote', this.applicationId]);
                      }
 
                      else if (statusRes.resultCode !== 0) {

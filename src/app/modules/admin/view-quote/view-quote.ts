@@ -139,6 +139,7 @@ export class ViewQuote implements OnInit,OnDestroy {
                         this.paymentProcessing = false;
                         this._snackBar.open('Payment successful!', 'Close', { duration: 4000 });
                         this.paymentPollingSub?.unsubscribe();
+                        this.router.navigate(['/viewmarinequote', this.quote.shippingId]);
                     }
 
                     else if (statusRes.resultCode !== 0) {
@@ -153,6 +154,7 @@ export class ViewQuote implements OnInit,OnDestroy {
                         this.paymentProcessing = false;
                         this._snackBar.open('Payment unsuccessful. Request timed out.', 'Close', { duration: 4000 });
                         this.paymentPollingSub?.unsubscribe();
+
                     }
                 });
             },
@@ -178,6 +180,7 @@ export class ViewQuote implements OnInit,OnDestroy {
         this.isLoading = true;
         this.quoteService.getQuoteById(quoteId).subscribe({
             next: (data) => {
+                console.log(data);
                 this.quote = data;
                 this.isLoading = false; // 🔹 Stop loading
             },
