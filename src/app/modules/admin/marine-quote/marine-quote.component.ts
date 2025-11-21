@@ -299,14 +299,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
         });
     }
 
-    private extractPhoneNumber(input: string): string {
-        if (!input) return '';
-        const digitsOnly = input.replace(/\D/g, '');
-        const lastTenDigits = digitsOnly.slice(-10);
-        return lastTenDigits.startsWith('0')
-            ? lastTenDigits
-            : '0' + lastTenDigits;
-    }
+
 
     onScrollPorts(event: Event) {
         const panel = event.target as HTMLElement;
@@ -1470,6 +1463,15 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
             });
     }
 
+    private extractPhoneNumber(input: string): string {
+        if (!input) return '';
+        const digitsOnly = input.replace(/\D/g, '');
+        const lastTenDigits = digitsOnly.slice(-10);
+        return lastTenDigits.startsWith('0')
+            ? lastTenDigits
+            : '0' + lastTenDigits;
+    }
+
     scrollToFirstError(): void {
         const firstInvalidControl: HTMLElement | null = document.querySelector(
             'form .ng-invalid'
@@ -1791,7 +1793,8 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
                 // Generate reference number for M-Pesa payment
                 const refNo = applicationResponse?.transactionId;
-                this.applicationId = applicationResponse?.entityId;
+                this.applicationId = applicationResponse?.commandId;
+
                 this.isMakePaymentNow = true;
                 this.paymentRefNo = refNo;
                 this.isSubmitting = false;

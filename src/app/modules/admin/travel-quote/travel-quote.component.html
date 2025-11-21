@@ -1,0 +1,177 @@
+<div class="flex flex-col flex-auto w-full p-6 md:p-10">
+    <div class="bg-card rounded-xl shadow w-full">
+        <!-- Header -->
+        <div class="p-6 border-b">
+            <h2 class="text-xl font-semibold">Travel Quote Details</h2>
+        </div>
+        <div class="p-6">
+            <mat-horizontal-stepper [linear]="true" #stepper class="w-full">
+                <mat-step [stepControl]="quoteForm">
+                    <ng-template matStepLabel>Available Plans</ng-template>
+                    <form [formGroup]="quoteForm" class="space-y-6 w-full">
+                        <fuse-alert
+                            *ngIf="submissionError"
+                            [title]="'Submission Failed!'"
+                            [type]="'error'"
+                            [dismissible]="true"
+                            (dismiss)="submissionError = null">
+                            {{ submissionError }}
+                        </fuse-alert>
+                        <div class="rounded-lg bg-white p-6 shadow-sm">
+                            <h2 class="mb-2 text-2xl font-semibold text-gray-900">Get Your Travel Insurance Quote</h2>
+                            <p class="mb-6 text-gray-600">Tell us about your trip to see available plans and pricing.</p>
+                            <div class="grid grid-cols-1 gap-x-6 gap-y-4">
+                                <div>
+                                    <label class="mb-2 block text-sm font-medium text-gray-700">Cover Period<span class="text-red-500">*</span></label>
+                                    <select formControlName="duration"
+                                            class="w-full rounded-md border border-gray-300 bg-white px-3 py-2">
+                                        <option value="" disabled>Select duration</option>
+                                        <option *ngFor="let d of durations" [value]="d.id">{{ d.durationDesc }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div *ngIf="quoteForm.get('duration')?.value" class="mt-8">
+                            <h3 class="mb-4 text-xl font-semibold text-gray-800">Select a Plan</h3>
+                            <div class="grid grid-cols-3 gap-6">
+                                <div *ngFor="let plan of rates" class="plan-card" [ngClass]="{'selected-plan': true}">
+                                    <div class="p-6">
+                                        <div class="plan-price">
+                                            <span class="price-amount">KES {{ (plan.rateAmount * plan.exchangeRate) | number:'1.0-0' }}</span>
+                                            <div class="price-period">per person</div>
+                                        </div>
+                                        <div class="plan-tags">
+                                            <span *ngFor="let tag of plan.planTagsData" class="plan-tag">{{ tag.tag }}</span>
+                                        </div>
+                                        <ul class="plan-benefits">
+                                            <li *ngFor="let benefit of plan.benefitsData" class="benefit-item">
+                                                <mat-icon class="benefit-icon included">check_circle</mat-icon>
+                                                <div class="benefit-text">
+                                                    <div class="benefit-name">{{ benefit.benefitName }}</div>
+                                                    <div class="benefit-details">
+                                                        <span *ngIf="benefit.benefitLimit" class="benefit-limit">{{ benefit.benefitLimit }}</span>
+                                                        <span *ngIf="benefit.notes" class="benefit-notes">{{ benefit.notes }}</span>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <label class="p-6 pt-0 mt-auto">
+                                        <input type="radio" formControlName="plan" [value]="plan.id" class="sr-only"/>
+                                        <span class="select-button">Select Plan</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end mt-6">
+                            <button
+                                mat-flat-button
+                                color="primary"
+                                (click)="moveToNext()"
+                                class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all">
+                                Next
+                            </button>
+                        </div>
+                    </form>
+                </mat-step>
+                <mat-step [stepControl]="quoteForm">
+                    <ng-template matStepLabel>Traveler Details</ng-template>
+                    <form [formGroup]="travelerDetailsForm" *ngIf="!isLoadingData">
+                        <h3 class="mb-4 border-b pb-2 text-lg font-semibold text-gray-800">Primary Contact & Trip Info</h3>
+                        <div class="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+                            <div>
+                                <label class="mb-2 block text-sm font-medium text-gray-700">Email Address<span class="text-red-500">*</span></label>
+                                <input type="email" formControlName="email"  (input)="handleInputChange($event, 'email')" (blur)="trimInput($event, 'email')" (keydown)="preventLeadingSpace($event)" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2" />
+                                <div *ngIf="tdf.email.invalid && (tdf.email.dirty || tdf.email.touched)" class="mt-1 text-xs text-red-500">
+                                    <div *ngIf="tdf.email.errors?.['required']">Email address is required.</div>
+                                    <div *ngIf="tdf.email.errors?.['email']">Please enter a valid email address.</div>
+                                    <div *ngIf="tdf.email.errors?.['whitespace']">Email cannot contain only whitespace.</div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="mb-2 block text-sm font-medium text-gray-700">Phone Number<span class="text-red-500">*</span></label>
+                                <input type="tel" formControlName="phoneNumber" (input)="handleInputChange($event, 'phoneNumber')" (blur)="trimInput($event, 'phoneNumber')" (keydown)="preventLeadingSpace($event)" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2" placeholder="+254712345678" />
+                                <div *ngIf="tdf.phoneNumber.invalid && (tdf.phoneNumber.dirty || tdf.phoneNumber.touched)" class="mt-1 text-xs text-red-500">
+                                    <div *ngIf="tdf.phoneNumber.errors?.['required']">Phone number is required.</div>
+                                    <div *ngIf="tdf.phoneNumber.errors?.['invalidPhoneNumber']">Please enter a valid phone number (9-15 digits).</div>
+                                    <div *ngIf="tdf.phoneNumber.errors?.['whitespace']">Phone number cannot contain only whitespace.</div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="mb-2 block text-sm font-medium text-gray-700">Number of Travelers<span class="text-red-500">*</span></label>
+                                <input type="number" formControlName="numTravelers" min="1" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2" />
+                                <div *ngIf="tdf.numTravelers.invalid && (tdf.numTravelers.dirty || tdf.numTravelers.touched)" class="mt-1 text-xs text-red-500">
+                                    <div *ngIf="tdf.numTravelers.errors?.['required']">Number of travelers is required.</div>
+                                    <div *ngIf="tdf.numTravelers.errors?.['min']">At least one traveler is required.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-8" formArrayName="travelers">
+                            <h3 class="mb-4 border-b pb-2 text-lg font-semibold text-gray-800">Traveler Information</h3>
+
+                            <!-- NEW: Duplicate Traveler Error Message -->
+                            <div *ngIf="travelers.hasError('duplicateTraveler') && travelers.touched" class="mb-4 rounded-md bg-red-50 p-3 text-center text-sm text-red-600">
+                                Error: Each traveler must have a unique combination of full name and date of birth.
+                            </div>
+
+                            <div *ngFor="let travelerGroup of travelers.controls; let i = index" [formGroupName]="i" class="mb-6 rounded-md border bg-gray-50/50 p-4">
+                                <h4 class="mb-4 font-medium text-gray-700">
+                                    {{ i === 0 ? 'Primary Traveler' : 'Traveler ' + (i + 1) }}
+                                </h4>
+                                <div class="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+                                    <div>
+                                        <label class="mb-2 block text-sm font-medium text-gray-700">Full Name<span class="text-red-500">*</span></label>
+                                        <input type="text" formControlName="fullName" (blur)="trimTravelerInput($event, i, 'fullName')" class="w-full rounded-md border border-gray-300 bg-white px-3 py-2" />
+                                        <div *ngIf="travelerGroup.get('fullName')?.invalid && (travelerGroup.get('fullName')?.dirty || travelerGroup.get('fullName')?.touched)" class="mt-1 text-xs text-red-500">
+                                            <div *ngIf="travelerGroup.get('fullName')?.errors?.['required']">Full name is required.</div>
+                                            <div *ngIf="travelerGroup.get('fullName')?.errors?.['invalidName']">Please enter at least two names (e.g., John Doe).</div>
+                                            <div *ngIf="travelerGroup.get('fullName')?.errors?.['whitespace']">Name cannot contain only whitespace.</div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <mat-form-field appearance="outline" class="w-full">
+                                            <mat-label>Date of Birth</mat-label>
+
+                                            <input
+                                                matInput
+                                                [matDatepicker]="picker"
+                                                formControlName="dob"
+                                                placeholder="dd-MMM-yyyy"
+                                            />
+
+                                            <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                                            <mat-datepicker #picker></mat-datepicker>
+                                        </mat-form-field>
+                                        <div *ngIf="travelerGroup.get('dob')?.invalid && (travelerGroup.get('dob')?.dirty || travelerGroup.get('dob')?.touched)" class="mt-1 text-xs text-red-500">
+                                            <div *ngIf="travelerGroup.get('dob')?.errors?.['required']">Date of birth is required.</div>
+                                            <div *ngIf="travelerGroup.get('dob')?.errors?.['futureDate']">Date of birth cannot be in the future.</div>
+                                            <div *ngIf="travelerGroup.get('dob')?.errors?.['tooOld']">Please enter a valid year.</div>
+                                        </div>
+                                        <!-- NEW: Minor Declaration -->
+                                        <div *ngIf="travelerGroup.get('dob')?.valid && getAge(travelerGroup.get('dob')?.value) < 18" class="mt-1 text-xs font-semibold text-blue-600">
+                                            (This traveler is a minor)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex items-center">
+                            <input type="checkbox" formControlName="winterSports" id="winterSports" class="h-4 w-4 rounded border-gray-300 text-geminia-blue focus:ring-geminia-blue" />
+                            <label for="winterSports" class="ml-2 text-sm text-gray-700">Add Winter Sports cover (Optional Surcharge)</label>
+                        </div>
+                        <div class="flex justify-end mt-6">
+                            <button
+                                mat-flat-button
+                                color="primary"
+                                class="bg-primary-600 hover:bg-primary-700 text-white px-6 py-2 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all">
+                                Next
+                            </button>
+                        </div>
+                    </form>
+                </mat-step>
+            </mat-horizontal-stepper>
+        </div>
+    </div>
+</div>

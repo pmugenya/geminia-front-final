@@ -50,7 +50,7 @@ import {
     Port, QuoteResult,
     QuotesData, UserDocumentData,
 } from '../../../core/user/user.types';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 
 @Component({
@@ -113,6 +113,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
     isProcessingStk = false;
     paymentSuccess?: boolean;
     isMakePaymentNow = false;
+    applicationId: number;
     isLoadingCounties = false;
     isLoading = false;
     isLoadingDischargePorts = false;
@@ -172,6 +173,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                 private quotationService: QuoteService,
                 private userService: UserService,
                 private datePipe: DatePipe,
+                private router: Router,
                 private route: ActivatedRoute,
                 private _snackBar: MatSnackBar) { }
 
@@ -401,6 +403,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                         this.fetchProspectDocuments(res.prospectId);
                     }
                 }
+                console.log(this.marineCategories);
                 const selectedCategory = this.marineCategories.find(c => c.id === res.catId);
                 this.shipmentForm.get('selectCategory')?.setValue(selectedCategory.catname);
                 this.onCategorySelected2(selectedCategory.catname);
@@ -577,6 +580,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                 console.log('Shipping application created successfully:', applicationResponse);
 
                 // Generate reference number for M-Pesa payment
+                this.applicationId =  applicationResponse?.commandId;
                 const refNo = applicationResponse?.transactionId;
                 this.applicationId =  applicationResponse?.entityId;
                 this.isMakePaymentNow = true;
@@ -652,6 +656,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                         this.paymentSuccess = true;
                         this._snackBar.open('Payment successful!', 'Close', { duration: 4000 });
                         this.paymentPollingSub?.unsubscribe();
+                        this.router.navigate(['/viewmarinequote', this.applicationId]);
                     }
 
                     else if (statusRes.resultCode !== 0) {
