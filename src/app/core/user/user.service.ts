@@ -29,7 +29,7 @@ export class UserService {
 
     constructor() {
         const userData = sessionStorage.getItem(this.STORAGE_KEYS.USER_DATA);
-        // console.log(userData);
+        console.log(userData);
         if (userData) {
             this.currentUserSubject.next(JSON.parse(userData));
         }
@@ -193,6 +193,12 @@ export class UserService {
 
     getUserDocuments(): Observable<UserDocumentData> {
         return this._httpClient.get<UserDocumentData>(`${this.baseUrl}/users/userdocuments`).pipe(
+            catchError(this.handleError)
+        );
+    }
+
+    getUserDetails(): Observable<UserDocumentData> {
+        return this._httpClient.get<UserDocumentData>(`${this.baseUrl}/users/userdetails`).pipe(
             catchError(this.handleError)
         );
     }

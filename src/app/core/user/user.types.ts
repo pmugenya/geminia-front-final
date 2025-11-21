@@ -207,3 +207,53 @@ export interface CoverageData {
     amount: number;
     percentage: number;
 }
+
+
+export interface TravelDuration {
+    id: number;
+    durationDesc: string;
+    durationVal:number
+}
+
+export interface TravelBenefitsData {
+    id: number;
+    benefitName: string;
+    benefitIncluded: string;
+    currencySymbol: string;
+    currency: string;
+    status: string;
+    frequency: string;
+    notes: string;
+    benefitLimit: number;
+}
+
+export interface TravelPlanTagsData {
+    id: number;
+    tag: string;
+}
+
+export interface TravelCoversData {
+    id: number;
+    coverDesc: string;
+}
+
+export interface TravelPlansData {
+    id: number;
+    coverId: number;
+    planShtDesc: string;
+    planName: string;
+    planType: string;
+    planPopular: string;
+}
+
+export interface TravelRatesData {
+    id: number;
+    planId: number;
+    rateAmount: number;
+    exchangeRate: number;
+    plansData: TravelPlansData;
+    benefitsData: TravelBenefitsData[];
+    planTagsData: TravelPlanTagsData[];
+    travelCoversData: TravelCoversData;
+}
+

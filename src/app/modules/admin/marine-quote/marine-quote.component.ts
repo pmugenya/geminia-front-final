@@ -56,6 +56,7 @@ import { DateAdapter, MAT_DATE_FORMATS, MAT_DATE_LOCALE, MatNativeDateModule } f
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MY_DATE_FORMATS } from '../../../core/directives/date-formats';
 import { MomentDateAdapter } from '@angular/material-moment-adapter';
+import { Router } from '@angular/router';
 
 @Component({
     selector: 'example',
@@ -185,6 +186,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
     isMakePaymentNow = false;
     paymentRefNo: string ='';
+    applicationId: number;
     applicationSubmitted: boolean = false;
     isSubmitting: boolean = false;
     isProcessPayment: boolean = false;
@@ -200,6 +202,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 private quotationService: QuoteService,
                 private _fuseAlertService: FuseAlertService,
                 private datePipe: DatePipe,
+                private router: Router,
                 private _snackBar: MatSnackBar) { }
 
     ngOnInit(): void {
@@ -296,14 +299,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
         });
     }
 
-    private extractPhoneNumber(input: string): string {
-        if (!input) return '';
-        const digitsOnly = input.replace(/\D/g, '');
-        const lastTenDigits = digitsOnly.slice(-10);
-        return lastTenDigits.startsWith('0')
-            ? lastTenDigits
-            : '0' + lastTenDigits;
-    }
+
 
     onScrollPorts(event: Event) {
         const panel = event.target as HTMLElement;
@@ -1467,6 +1463,15 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
             });
     }
 
+    private extractPhoneNumber(input: string): string {
+        if (!input) return '';
+        const digitsOnly = input.replace(/\D/g, '');
+        const lastTenDigits = digitsOnly.slice(-10);
+        return lastTenDigits.startsWith('0')
+            ? lastTenDigits
+            : '0' + lastTenDigits;
+    }
+
     scrollToFirstError(): void {
         const firstInvalidControl: HTMLElement | null = document.querySelector(
             'form .ng-invalid'
@@ -1788,6 +1793,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
                 // Generate reference number for M-Pesa payment
                 const refNo = applicationResponse?.transactionId;
+                this.applicationId = applicationResponse?.commandId;
                 this.isMakePaymentNow = true;
                 this.paymentRefNo = refNo;
                 this.isSubmitting = false;
@@ -1860,6 +1866,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                          this.paymentSuccess = true;
                          this._snackBar.open('Payment successful!', 'Close', { duration: 4000 });
                          this.paymentPollingSub?.unsubscribe();
+                         this.router.navigate(['/viewmarinequote', this.applicationId]);
                      }
 
                      else if (statusRes.resultCode !== 0) {

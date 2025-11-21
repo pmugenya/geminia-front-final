@@ -1,21 +1,54 @@
 <div class="flex flex-col flex-auto w-full p-6 md:p-10">
-    <div class="bg-card rounded-xl shadow w-full">
+    <div *ngIf="isLoading" class="flex flex-col items-center justify-center h-[60vh] w-full">
+        <mat-spinner diameter="60" color="primary"></mat-spinner>
+        <p class="mt-4 text-gray-600 font-medium">Loading quote details...</p>
+    </div>
+    <div class="bg-card rounded-xl shadow w-full" *ngIf="!isLoading">
         <!-- Header -->
         <div class="p-6 border-b bg-gradient-to-r from-blue-50 to-blue-100">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900">Marine Shipping Application - {{refno}}</h2>
-                    <p class="text-sm text-gray-600 mt-1">Reference: <span class="font-semibold text-blue-600">{{refno}}</span></p>
-                    <p class="text-sm text-gray-600 mt-1">Status: <span class="font-semibold text-blue-600">{{approvedStatus}}</span></p>
+                    <h2 class="text-2xl font-bold text-gray-900">
+                        Marine Shipping Application - {{refno}}
+                    </h2>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Reference: <span class="font-semibold text-blue-600">{{refno}}</span>
+                    </p>
+                    <p class="text-sm text-gray-600 mt-1">
+                        Status: <span class="font-semibold text-blue-600">{{approvedStatus}}</span>
+                    </p>
                 </div>
-                <div class="mt-4 md:mt-0 flex gap-3">
-                    <button class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all">
+
+                <div class="mt-4 md:mt-0 flex flex-col gap-2" *ngIf="erprefno">
+                    <!-- Download button -->
+                    <button
+                        (click)="printCertificate()"
+                        class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all"
+                    >
                         <mat-icon class="text-blue-600">download</mat-icon>
                         <span class="text-sm font-medium">Download Certificate</span>
                     </button>
+
+                    <!-- Progress bar -->
+                    <mat-progress-bar
+                        *ngIf="progress >= 0"
+                        mode="determinate"
+                        [value]="progress"
+                        color="accent"
+                        class="w-full"
+                    ></mat-progress-bar>
+
+                    <!-- Optional text percentage -->
+                    <div
+                        *ngIf="progress >= 0"
+                        class="text-sm text-gray-600"
+                    >
+                        Download Progress: {{progress}}%
+                    </div>
                 </div>
             </div>
         </div>
+
 
 
         <!-- Payment Status -->
@@ -59,7 +92,13 @@
                     </div>
                     <div>
                         <label class="text-xs font-medium text-gray-600">Policy Number</label>
-                        <p class="text-sm font-semibold text-gray-900">{{erprefno}}</p>
+                        <p class="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                            <!-- Show spinner while empty -->
+                            <mat-spinner *ngIf="!erprefno" diameter="20"></mat-spinner>
+
+                            <!-- Show value when available -->
+                            <span *ngIf="erprefno">{{erprefno}}</span>
+                        </p>
                     </div>
                     <div>
                         <label class="text-xs font-medium text-gray-600">IDF Number</label>
@@ -335,16 +374,16 @@
                     </div>
 
                     <!-- Pay Now Button -->
-<!--                    <button-->
-<!--                        [disabled]="!isPhoneNumberValid() || isProcessingPayment"-->
-<!--                        class="w-full py-4 rounded-lg font-bold text-lg transition-all shadow-lg"-->
-<!--                        [ngClass]="isPhoneNumberValid() && !isProcessingPayment-->
-<!--                            ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'-->
-<!--                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'">-->
-<!--                        <mat-spinner *ngIf="isProcessingPayment" diameter="24" class="inline-block mr-2"></mat-spinner>-->
-<!--                        <mat-icon *ngIf="!isProcessingPayment" class="mr-2">send</mat-icon>-->
-<!--                        {{isProcessingPayment ? 'Processing Payment...' : 'Pay Now via M-PESA'}}-->
-<!--                    </button>-->
+                    <!--                    <button-->
+                    <!--                        [disabled]="!isPhoneNumberValid() || isProcessingPayment"-->
+                    <!--                        class="w-full py-4 rounded-lg font-bold text-lg transition-all shadow-lg"-->
+                    <!--                        [ngClass]="isPhoneNumberValid() && !isProcessingPayment-->
+                    <!--                            ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'-->
+                    <!--                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'">-->
+                    <!--                        <mat-spinner *ngIf="isProcessingPayment" diameter="24" class="inline-block mr-2"></mat-spinner>-->
+                    <!--                        <mat-icon *ngIf="!isProcessingPayment" class="mr-2">send</mat-icon>-->
+                    <!--                        {{isProcessingPayment ? 'Processing Payment...' : 'Pay Now via M-PESA'}}-->
+                    <!--                    </button>-->
 
                     <!-- Alternative Payment Methods -->
                     <div class="mt-6 pt-6 border-t border-gray-200">
