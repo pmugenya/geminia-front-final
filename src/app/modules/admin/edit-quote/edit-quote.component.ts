@@ -122,6 +122,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
     isLoadingCategories = false;
     portLoading = false;
     loading = false;
+    applicationId: number;
     isLoadingCargoTypes: boolean = true;
     paymentRefNo: string ='';
     quoteId!: string;
@@ -581,6 +582,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                 // Generate reference number for M-Pesa payment
                 this.applicationId =  applicationResponse?.commandId;
                 const refNo = applicationResponse?.transactionId;
+                this.applicationId =  applicationResponse?.entityId;
                 this.isMakePaymentNow = true;
                 this.paymentRefNo = refNo;
                 this.isSubmitting = false;

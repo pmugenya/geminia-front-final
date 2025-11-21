@@ -170,6 +170,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
     countyPage = 0;
     isLoadingCounties = false;
     pageSize = 50;
+    applicationId: number;
     isLoadingCategories = false;
     isSearching = false;
     categories: any[] = [];
@@ -186,7 +187,6 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
     isMakePaymentNow = false;
     paymentRefNo: string ='';
-    applicationId: number;
     applicationSubmitted: boolean = false;
     isSubmitting: boolean = false;
     isProcessPayment: boolean = false;
@@ -201,8 +201,8 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 private userService: UserService,
                 private quotationService: QuoteService,
                 private _fuseAlertService: FuseAlertService,
-                private datePipe: DatePipe,
                 private router: Router,
+                private datePipe: DatePipe,
                 private _snackBar: MatSnackBar) { }
 
     ngOnInit(): void {
@@ -1794,6 +1794,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 // Generate reference number for M-Pesa payment
                 const refNo = applicationResponse?.transactionId;
                 this.applicationId = applicationResponse?.commandId;
+
                 this.isMakePaymentNow = true;
                 this.paymentRefNo = refNo;
                 this.isSubmitting = false;

@@ -258,6 +258,10 @@ export class ViewMarineQuote implements OnInit {
 
 
     printCertificate(){
+<<<<<<< HEAD
+=======
+        console.log(this.error);
+>>>>>>> 10fc744d0cd3a5993a89f0fd8764c68f7223b5ce
         if(this.error){
             this.showError('An Error Occured while trying to retrieve certificate '+this.error);
             return;
