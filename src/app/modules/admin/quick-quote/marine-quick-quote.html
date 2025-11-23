@@ -243,6 +243,23 @@
                                        readonly />
                             </div>
                         </div>
+                        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                            <!-- Include War -->
+                            <div class="flex items-center space-x-3">
+                                <mat-checkbox formControlName="includeWar">
+                                    Include War
+                                </mat-checkbox>
+                            </div>
+
+                            <!-- Include Transhipping -->
+                            <div class="flex items-center space-x-3">
+                                <mat-checkbox formControlName="includeTranshipping">
+                                    Include Transhipping
+                                </mat-checkbox>
+                            </div>
+
+                        </div>
 
                         <div class="mb-6">
                             <label class="mb-2 block text-sm font-medium text-gray-700">Sum Insured (KES) <span
@@ -440,6 +457,14 @@
                                     <div class="text-lg font-bold text-gray-900">
                                         {{ quote?.sd | currency:'KES ' }}
                                     </div>
+                                </div>
+                                <div *ngIf="quote?.war">
+                                    <label class="text-sm font-semibold text-gray-700">War</label>
+                                    <div class="text-lg font-bold text-gray-900">{{ quote?.war | currency:'KES ' }}</div>
+                                </div>
+                                <div *ngIf="quote?.transhipping">
+                                    <label class="text-sm font-semibold text-gray-700">Transshipping</label>
+                                    <div class="text-lg font-bold text-gray-900">{{ quote?.transhipping | currency:'KES ' }}</div>
                                 </div>
 
                                 <div>

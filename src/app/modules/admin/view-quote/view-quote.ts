@@ -85,8 +85,9 @@ export class ViewQuote implements OnInit,OnDestroy {
     }
 
     initiatePayment(): void {
+        console.log('passed here...1');
         if (!this.paymentForm.valid || !this.quote) return;
-
+        console.log('passed here...2');
 
         this.paymentProcessing = true;
 

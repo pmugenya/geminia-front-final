@@ -246,8 +246,27 @@
                                     <input type="text" formControlName="destination" class="w-full rounded-md border-gray-300 bg-gray-100 px-3 py-2 text-gray-900 h-14" readonly/>
                                 </div>
                             </div>
+                        <!-- Include War & Include Transhipping -->
+                        <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                            <div class="mb-6">
+                            <!-- Include War -->
+                            <div class="flex items-center space-x-3">
+                                <mat-checkbox formControlName="includeWar">
+                                    Include War
+                                </mat-checkbox>
+                            </div>
+
+                            <!-- Include Transhipping -->
+                            <div class="flex items-center space-x-3">
+                                <mat-checkbox formControlName="includeTranshipping">
+                                    Include Transhipping
+                                </mat-checkbox>
+                            </div>
+
+                        </div>
+
+
+                        <div class="mb-6">
                                 <label class="mb-2 block text-sm font-medium text-gray-700">Sum Insured (KES) <span class="text-red-500">*</span></label>
                                 <input type="text" formControlName="sumInsured" appThousands placeholder="2,500,000" inputmode="numeric" class="w-full rounded-md border bg-white px-3 py-2 text-base" [ngClass]="(quotationForm.get('sumInsured')?.invalid && quotationForm.get('sumInsured')?.touched) || !quotationForm.get('sumInsured')?.value ? 'border-red-500 focus:ring-2 focus:ring-red-500' : 'border-gray-300 focus:ring-2 focus:ring-blue-500'"/>
                             </div>
@@ -391,6 +410,14 @@
                                     <label class="text-sm text-secondary">Stamp Duty</label>
                                     <div class="font-medium">{{ quote?.sd | currency:'KES ' }}</div>
                                 </div>
+                                <div *ngIf="quote?.war">
+                                    <label class="text-sm text-secondary">War</label>
+                                    <div class="font-medium">{{ quote?.war | currency:'KES ' }}</div>
+                                </div>
+                                <div *ngIf="quote?.transhipping">
+                                    <label class="text-sm text-secondary">Transshipping</label>
+                                    <div class="font-medium">{{ quote?.transhipping | currency:'KES ' }}</div>
+                                </div>
                                 <div>
                                     <label class="text-sm text-secondary">Net Premium</label>
                                     <div class="text-lg font-bold text-green-600">{{ quote?.netprem | currency:'KES ' }}</div>
@@ -451,7 +478,7 @@
                         </div>
 
                         <!-- Main Content Grid -->
-                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[700px] overflow-auto">
 
                             <!-- Left Column - Form Fields (Hidden after submission) -->
                             <div class="lg:col-span-7" [class.readonly-section]="applicationSubmitted">
@@ -897,7 +924,24 @@
                                                 <span class="text-gray-600">Stamp Duty:</span>
                                                 <span class="font-semibold">KES {{ formatAmount(quoteResult.sd) }}</span>
                                             </div>
+                                            <div class="flex justify-between text-sm" *ngIf="quoteResult.war">
+                                                <span class="text-gray-600">War:</span>
+                                                <span class="font-semibold">KES {{ formatAmount(quoteResult.war) }}</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm" *ngIf="quoteResult.transhipping">
+                                                <span class="text-gray-600">Transshipping:</span>
+                                                <span class="font-semibold">KES {{ formatAmount(quoteResult.transhipping) }}</span>
+                                            </div>
                                         </div>
+                                    </div>
+                                    <div class="flex flex-col gap-3 mb-4">
+                                        <mat-checkbox color="primary" formControlName="includeWar">
+                                            Include War
+                                        </mat-checkbox>
+
+                                        <mat-checkbox color="primary" formControlName="includeTranshipping">
+                                            Include Transhipping
+                                        </mat-checkbox>
                                     </div>
 
                                     <!-- Total Amount -->
@@ -944,14 +988,23 @@
                                         </div>
 
                                         <!-- Payment Button -->
+
+
                                         <button
                                             mat-raised-button
                                             color="primary"
-                                            class="w-full py-3 text-lg font-semibold"
+                                            class="w-full py-3 text-lg font-semibold rounded-lg border border-blue-700
+         shadow-md transition-all duration-300
+         bg-blue-600 text-white
+         hover:bg-teal-600 hover:text-white hover:shadow-xl
+         disabled:opacity-50 disabled:cursor-not-allowed"
                                             [disabled]="isProcessPayment || !shipmentForm.get('mpesaNumber')?.value"
                                             (click)="initiatePayment()">
+
                                             <mat-spinner *ngIf="isProcessPayment" diameter="24" class="mr-2"></mat-spinner>
-                                            <mat-icon *ngIf="!isProcessPayment" class="mr-2">send</mat-icon>
+
+                                            <mat-icon *ngIf="!isProcessPayment" class="mr-2 !text-white">send</mat-icon>
+
                                             {{ isProcessPayment ? 'Processing Payment...' : 'Send Payment Prompt' }}
                                         </button>
 
@@ -965,11 +1018,17 @@
                                         <button
                                             mat-raised-button
                                             color="primary"
-                                            class="w-full py-3 text-lg font-semibold"
+                                            class="w-full py-3 text-lg font-semibold rounded-lg border border-blue-700
+         shadow-md transition-all duration-300
+         bg-blue-600 text-white
+         hover:bg-teal-600 hover:text-white hover:shadow-xl"
                                             [disabled]="isSubmitting"
                                             (click)="onSubmit()">
+
                                             <mat-spinner *ngIf="isSubmitting" diameter="24" class="mr-2"></mat-spinner>
-                                            <mat-icon *ngIf="!isSubmitting" class="mr-2">send</mat-icon>
+
+                                            <mat-icon *ngIf="!isSubmitting" class="mr-2 !text-white">send</mat-icon>
+
                                             {{ isSubmitting ? 'Submitting Application...' : 'Submit Application' }}
                                         </button>
 

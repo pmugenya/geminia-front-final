@@ -10,7 +10,7 @@ import { MatTableModule } from '@angular/material/table';
 import { NgApexchartsModule } from 'ng-apexcharts';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
-import { CoverageData, PendingQuote, PolicyRecord, RecentActivity } from '../../../core/user/user.types';
+import { CoverageData, PendingQuote, PolicyRecord, RecentActivity, YTDAnalysis } from '../../../core/user/user.types';
 import { UserService } from '../../../core/user/user.service';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
@@ -174,6 +174,7 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
     policiesTotalRecords = 0;
     policiesPage = 0;
     policiesPageSize = 5;
+    ytd!: YTDAnalysis;
 
 
     constructor(  private userService: UserService,
@@ -224,7 +225,8 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
         this.getCoverageDistribution();
         forkJoin({
             quotes: this.userService.getClientQuotes(quotesOffset, this.quotesPageSize),
-            policies: this.userService.getClientPolicies(policiesOffset, this.policiesPageSize)
+            policies: this.userService.getClientPolicies(policiesOffset, this.policiesPageSize),
+            ytd: this.quoteService.getAgencyCoverage(),
         })
          .pipe(
             finalize(() => {
@@ -233,7 +235,7 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
                 this.cdr.detectChanges();
             })
          ).subscribe({
-            next: ({ quotes, policies }) => {
+            next: ({ quotes, policies,ytd }) => {
                 // Convert and assign quotes
                 this.myQuotesDataSource.data = quotes.pageItems.map((q: any) => ({
                     ...q,
@@ -251,8 +253,8 @@ export class ClientInsuranceDashboardComponent implements OnInit,AfterViewInit {
                 }));
                 this.myPolicyDataSource.data =  policiesData;
                 this.policiesTotalRecords = policies.totalFilteredRecords;
+                this.ytd = ytd;
 
-                console.log(policies.pageItems);
             },
             error: (err) => {
                 console.error('Error loading dashboard data', err);

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpEvent, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { QuotesData, RecentActivity } from '../user/user.types';
+import { GrowthDTO, QuotesAnalysis, QuotesData, RecentActivity, YTDAnalysis } from '../user/user.types';
 
 @Injectable({ providedIn: 'root' })
 export class QuoteService {
@@ -59,13 +59,18 @@ export class QuoteService {
         });
     }
 
-    computePremium(sumInsured: number, cargoType: number, shipping: number): Observable<any> {
+    computePremium(sumInsured: number, cargoType: number, shipping: number,packagingId: number,includeWar:boolean,includeShipping:boolean): Observable<any> {
         const payload = {
             suminsured: sumInsured,
             cargotype: cargoType,
+            includeWar: includeWar,
+            includeTranshipping: includeShipping,
+            packaging: packagingId,
             shipping: shipping,
             locale: 'en_US'
         };
+
+        console.log(payload);
 
         return this.http.post<any>(`${this.baseUrl}/compute`, payload, {
             headers: { 'Content-Type': 'application/json' }
@@ -101,6 +106,19 @@ export class QuoteService {
 
     getClientCoverage(): Observable<any> {
         return this.http.get(`${this.baseUrl}/dashboard/clientcoverage`);
+    }
+
+    getAgencyCoverage(): Observable<YTDAnalysis> {
+        return this.http.get<YTDAnalysis>(`${this.baseUrl}/dashboard/agencycoverage`);
+    }
+
+    getQuotAnalysis(): Observable<QuotesAnalysis> {
+        return this.http.get<QuotesAnalysis>(`${this.baseUrl}/dashboard/quotanalysis`);
+    }
+
+    getGrowthAnalysis(months: number) {
+        return this.http.get<GrowthDTO[]>(`${this.baseUrl}/dashboard/growthanalysis/${months}`);
+
     }
 
     /**
