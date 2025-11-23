@@ -226,6 +226,8 @@ export class MarineQuickQuoteComponent implements OnInit, OnDestroy
             lastName: ['', [Validators.required, CustomValidators.lastName]],
             email: ['', [Validators.required, CustomValidators.email]],
             phoneNumber: ['', [Validators.required, CustomValidators.phoneNumber]],
+            includeWar: [false],
+            includeTranshipping: [false],
         });
 
         // Step 2: Coverage Details (example fields)
@@ -729,6 +731,8 @@ export class MarineQuickQuoteComponent implements OnInit, OnDestroy
             tradeType: this.quotationForm.get('tradeType')?.value,
             countryOrigin: this.quotationForm.get('origin')?.value,
             destination: this.quotationForm.get('destination')?.value,
+            includeWar: this.quotationForm.get('includeWar')?.value,
+            includeTransShipping: this.quotationForm.get('includeTranshipping')?.value,
             dateFormat: 'dd MMM yyyy',
             locale: 'en_US',
             productId: 2416,

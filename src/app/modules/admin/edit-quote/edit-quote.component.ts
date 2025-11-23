@@ -26,12 +26,12 @@ import { MatCheckbox } from '@angular/material/checkbox';
 import { MomentDateAdapter } from '@angular/material-moment-adapter';
 import { MY_DATE_FORMATS } from '../../../core/directives/date-formats';
 import {
-    catchError, debounceTime, distinctUntilChanged,
+    catchError, debounceTime, distinctUntilChanged, filter,
     finalize, forkJoin, fromEvent,
-    interval,
+    interval, map,
     of, ReplaySubject,
     Subject, Subscription,
-    switchMap,
+    switchMap, take,
     takeUntil,
     takeWhile, tap, throttleTime,
     throwError,
@@ -122,7 +122,6 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
     isLoadingCategories = false;
     portLoading = false;
     loading = false;
-    applicationId: number;
     isLoadingCargoTypes: boolean = true;
     paymentRefNo: string ='';
     quoteId!: string;
@@ -187,6 +186,11 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
 
     ngOnInit(): void {
         this.initForms();
+        this.setupSearchFilters();
+        this.initializeAllData();
+        this.listenForSumInsuredChanges();
+        this.quoteId = this.route.snapshot.paramMap.get('quoteId')!;
+        this.isLoadingMarineData = true;
         forkJoin({
             products: this.userService.getMarineProducts(),
             packagingTypes: this.userService.getMarinePackagingTypes(),
@@ -195,26 +199,30 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
             next: (data) => {
                 this.marineProducts = data.products || [];
                 this.marinePackagingTypes = data.packagingTypes || [];
-                this.marineCategories = data.categories || [];
+                this.marineCategories = data.categories ?? [];
                 // Initialize filtered arrays
-                this.filteredMarineCategories = this.marineCategories.slice();
+                this.filteredMarineCategories = [...this.marineCategories];
 
+                if (this.marineCategories.length === 0) {
+                    console.warn("⚠ Marine categories returned empty list from API.");
+                }
+
+
+                if(this.quoteId){
+                    this.loadQuotDetails();
+                }
                 this.isLoadingMarineData = false;
             },
             error: (err) => {
                 console.error('Error loading marine data:', err);
                 this.isLoadingMarineData = false;
+                this.marineCategories = [];
+                this.filteredMarineCategories = [];
             },
         });
-        this.setupSearchFilters();
-        this.initializeAllData();
-        this.listenForSumInsuredChanges();
-        this.quoteId = this.route.snapshot.paramMap.get('quoteId')!;
-        this.isLoadingMarineData = true;
 
-        if(this.quoteId){
-            this.loadQuotDetails();
-        }
+
+
     }
 
     private initializeAllData(): void {
@@ -391,7 +399,9 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                     tl: res.traininglevy,
                     sd: res.sd,
                     netprem: res.netprem,
-                    id: res.quoteId
+                    id: res.quoteId,
+                    war:res.war,
+                    transhipping:res.transhipping
                 };
                 const authUser =  this.userService.getCurrentUser();
                 if(authUser){
@@ -404,18 +414,43 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                     }
                 }
                 console.log(this.marineCategories);
+                this.shipmentForm.get('modeOfShipment')?.setValue(''+res.shippingmodeId);
                 const selectedCategory = this.marineCategories.find(c => c.id === res.catId);
                 this.shipmentForm.get('selectCategory')?.setValue(selectedCategory.catname);
-                this.onCategorySelected2(selectedCategory.catname);
-                this.onCategorySelectedVal(selectedCategory.catname).subscribe(() => {
-                    const selectedCategory = this.filteredMarineCargoTypess.find(c => c.id === res.cargotypeId);
-                    this.shipmentForm.get('salesCategory')?.setValue(selectedCategory.ctname);
-                });
-                this.shipmentForm.get('agreeToTerms')?.setValue(true, { emitEvent: false });
-                this.onDropdownOpen('categories');
 
-                this.shipmentForm.get('modeOfShipment')?.setValue(''+res.shippingmodeId);
-                this.shipmentForm.get('sumInsured')?.setValue(res.sumassured);
+                this.onCategorySelectedVal(selectedCategory.catname)
+                    .pipe(
+                        filter(() => this.filteredMarineCargoTypess?.length > 0),
+                        take(1) // only once
+                    )
+                    .subscribe(() => {
+                        const selectedCargo = this.filteredMarineCargoTypess
+                            .find(c => c.id === res.cargotypeId);
+                        console.log('selectedCargo ',selectedCargo);
+
+                        if (selectedCargo) {
+                            this.shipmentForm.get('salesCategory')?.setValue(selectedCargo.ctname);
+                        }
+                        this.shipmentForm.get('sumInsured')?.setValue(res.sumassured);
+                    });
+                //this.onCategorySelected2(selectedCategory.catname);
+
+                // this.onCategorySelectedVal(selectedCategory.catname).subscribe((cargoTypes) => {
+                //     const matched = cargoTypes.find(c => c.id === res.cargotypeId);
+                //     if (matched) {
+                //         this.shipmentForm.get('salesCategory')?.setValue(matched.ctname);
+                //     }
+                // });
+                this.shipmentForm.get('agreeToTerms')?.setValue(true, { emitEvent: false });
+               // this.onDropdownOpen('categories');
+               //  this.shipmentForm.get('sumInsured')?.setValue(res.sumassured);
+
+                if(res.transhipping && res.transhipping > 0){
+                    this.shipmentForm.get('includeTranshipping')?.setValue(true,{ emitEvent: false });
+                }
+                if(res.war && res.war > 0){
+                    this.shipmentForm.get('includeWar')?.setValue(true,{ emitEvent: false });
+                }
 
                 let selectedCountry = this.origincountries.find(c => c.id === Number(res.originCountry));
                 const setCountryAndProceed = (country: Country) => {
@@ -494,16 +529,16 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
             gcrNumber: ['', [Validators.required, CustomValidators.idfNumber]],
             loadingPort: ['', Validators.required],
             portOfDischarge: ['', Validators.required],
-            vesselName: ['', CustomValidators.vesselName],
+            vesselName: ['', [Validators.required, CustomValidators.vesselName]],
             finalDestination: ['', Validators.required],
             dateOfDispatch: ['', Validators.required],
             estimatedArrival: ['', Validators.required],
             sumInsured: ['', [Validators.required, Validators.min(1)]],
             goodsDescription: ['', Validators.required],
             mpesaNumber: ['', [ CustomValidators.mpesaNumber]],
-
-            // Payment
-            paymentMethod: ['mpesa', Validators.required]
+            paymentMethod: ['mpesa', Validators.required],
+            includeWar: [false],
+            includeTranshipping: [false],
         });
     }
 
@@ -565,7 +600,8 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
             dateOfDispatch: this.datePipe.transform(kycFormValue.dateOfDispatch, 'dd MMM yyyy'),
             estimatedArrivalDate: this.datePipe.transform(kycFormValue.estimatedArrival, 'dd MMM yyyy'),
             description: kycFormValue.goodsDescription,
-            // shippingItems: kycFormValue.shippingItems,
+            includeWar: kycFormValue.includeWar,
+            includeTransShipping: kycFormValue.includeTranshipping,
             dateFormat: 'dd MMM yyyy',
             locale: 'en_US',
         };
@@ -929,20 +965,24 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
     }
 
     onCategoryTypeSelected2(categoryValue: string) {
-        console.log(categoryValue);
+        console.log('computed premium....1');
         const selectedCategory = this.filteredMarineCargoTypes.find(c => c.ctname === categoryValue);
         const formValue = this.shipmentForm.getRawValue();
         const modeOfShipment =  formValue.modeOfShipment;
         const  sumInsured = formValue.sumInsured;
+        const packagingTypeId = this.quote.packagingtypeId;
+        const  includeWar = formValue.includeWar;
+        const  includeTranshipping = formValue.includeTranshipping;
         if(selectedCategory && modeOfShipment) {
-            this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment).subscribe({
+            this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment,packagingTypeId,includeWar,includeTranshipping).subscribe({
                 next: (res) => {
                     this.quoteResult.phcf  = res.phcf;
                     this.quoteResult.tl  = res.tl;
                     this.quoteResult.sd  = res.sd;
                     this.quoteResult.netprem  = res.netprem;
                     this.quoteResult.premium  = res.premium;
-                    console.log(this.quoteResult);
+                    this.quoteResult.transhipping = res.transhipping;
+                    this.quoteResult.war = res.war;
                 },
                 error: (err) => {
                     console.error('Error computing premium:', err);
@@ -952,25 +992,39 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
     }
 
     listenForSumInsuredChanges(): void {
+        this.shipmentForm.get('dateOfDispatch')?.valueChanges.subscribe((dispatchDate: Date) => {
+            if (dispatchDate) {
+                const arrivalDate = new Date(dispatchDate);
+                arrivalDate.setMonth(arrivalDate.getMonth() + 3);
+
+                this.shipmentForm.get('estimatedArrival')?.setValue(arrivalDate);
+            }
+        });
+
         this.shipmentForm.get('sumInsured')?.valueChanges.pipe(
             debounceTime(300),
             distinctUntilChanged(),
             takeUntil(this.destroy$)
         ).subscribe((sumInsured) => {
             if (sumInsured && sumInsured > 0) {
+                console.log('computed premium....2');
                 const formValue = this.shipmentForm.getRawValue();
                 const modeOfShipment =  formValue.modeOfShipment;
                 const  marineCargoType = formValue.salesCategory;
+                const  includeWar = formValue.includeWar;
+                const  includeTranshipping = formValue.includeTranshipping;
+                const packagingTypeId = this.quote.packagingtypeId;
                 const selectedCategory = this.filteredMarineCargoTypes.find(c => c.ctname === marineCargoType);
                 if(selectedCategory && modeOfShipment) {
-                    this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment).subscribe({
+                    this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment,packagingTypeId,includeWar,includeTranshipping).subscribe({
                         next: (res) => {
                             this.quoteResult.phcf  = res.phcf;
                             this.quoteResult.tl  = res.tl;
                             this.quoteResult.sd  = res.sd;
                             this.quoteResult.netprem  = res.netprem;
                             this.quoteResult.premium  = res.premium;
-                            console.log(this.quoteResult);
+                            this.quoteResult.transhipping = res.transhipping;
+                            this.quoteResult.war = res.war;
                         },
                         error: (err) => {
                             console.error('Error computing premium:', err);
@@ -979,17 +1033,77 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                 }
             }
         });
+
+        this.shipmentForm.get('includeTranshipping')?.valueChanges.subscribe(value => {
+            console.log('value...',value);
+            const formValue = this.shipmentForm.getRawValue();
+            const modeOfShipment =  formValue.modeOfShipment;
+            const sumInsured =  formValue.sumInsured;
+            const  marineCargoType = formValue.salesCategory;
+            const  includeWar = formValue.includeWar;
+            const  includeTranshipping = value;
+            const packagingTypeId = this.quote.packagingtypeId;
+            const selectedCategory = this.filteredMarineCargoTypes.find(c => c.ctname === marineCargoType);
+            console.log(this.filteredMarineCargoTypes);
+            if(selectedCategory && modeOfShipment) {
+                this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment,packagingTypeId,includeWar,includeTranshipping).subscribe({
+                    next: (res) => {
+                        this.quoteResult.phcf  = res.phcf;
+                        this.quoteResult.tl  = res.tl;
+                        this.quoteResult.sd  = res.sd;
+                        this.quoteResult.netprem  = res.netprem;
+                        this.quoteResult.premium  = res.premium;
+                        this.quoteResult.transhipping = res.transhipping;
+                        this.quoteResult.war = res.war;
+                    },
+                    error: (err) => {
+                        console.error('Error computing premium:', err);
+                    }
+                });
+            }
+        });
+
+        this.shipmentForm.get('includeWar')?.valueChanges.subscribe(value => {
+            console.log('computed premium....1');
+            const formValue = this.shipmentForm.getRawValue();
+            const modeOfShipment =  formValue.modeOfShipment;
+            const sumInsured =  formValue.sumInsured;
+            const  marineCargoType = formValue.salesCategory;
+            const  includeWar = value;
+            const  includeTranshipping = formValue.includeTranshipping;
+            const packagingTypeId = this.quote.packagingtypeId;
+            const selectedCategory = this.filteredMarineCargoTypes.find(c => c.ctname === marineCargoType);
+            if(selectedCategory && modeOfShipment) {
+                this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment,packagingTypeId,includeWar,includeTranshipping).subscribe({
+                    next: (res) => {
+                        this.quoteResult.phcf  = res.phcf;
+                        this.quoteResult.tl  = res.tl;
+                        this.quoteResult.sd  = res.sd;
+                        this.quoteResult.netprem  = res.netprem;
+                        this.quoteResult.premium  = res.premium;
+                        this.quoteResult.transhipping = res.transhipping;
+                        this.quoteResult.war = res.war;
+                    },
+                    error: (err) => {
+                        console.error('Error computing premium:', err);
+                    }
+                });
+            }
+        });
     }
 
     onCategorySelectedVal(categoryValue: string) {
         const selectedCategory = this.marineCategories.find(c => c.catname === categoryValue);
-        if (!selectedCategory) return of([]); // or throw error
+        if (!selectedCategory) return of([]);
 
-        return this.userService.getCargoTypesByCategory(selectedCategory.id)
-            .pipe(tap(cargoTypes => {
+        return this.userService.getCargoTypesByCategory(selectedCategory.id).pipe(
+            tap(cargoTypes => {
                 this.marineCargoTypess = cargoTypes || [];
-                this.filteredMarineCargoTypess = this.marineCargoTypess.slice();
-            }));
+                this.filteredMarineCargoTypess = [...this.marineCargoTypess];
+            }),
+            // IMPORTANT: return the cargoTypes to the subscriber
+            map(cargoTypes => cargoTypes || [])
+        );
     }
 
 
@@ -1182,13 +1296,28 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                 this.userDocs = data;
                 this.isLoadingMarineData = false;
                 this.shipmentForm.get('idNumber')?.setValue(data.idNo);
+                if (data.idNo) {
+                    this.shipmentForm.get('idNumber')?.disable();
+                } else {
+                    this.shipmentForm.get('idNumber')?.enable();
+                }
                 this.shipmentForm.get('streetAddress')?.setValue(data.postalAddress);
                 this.shipmentForm.get('postalCode')?.setValue(data.postalCode);
                 this.shipmentForm.get('firstName')?.setValue(data.firstName);
                 this.shipmentForm.get('lastName')?.setValue(data.lastName);
                 this.shipmentForm.get('emailAddress')?.setValue(data.emailAddress);
+                if (data.emailAddress) {
+                    this.shipmentForm.get('emailAddress')?.disable();
+                } else {
+                    this.shipmentForm.get('emailAddress')?.enable();
+                }
                 this.shipmentForm.get('phoneNumber')?.setValue(this.extractPhoneNumber(data.phoneNumber));
                 this.shipmentForm.get('kraPin')?.setValue(data.pinNo);
+                if (data.pinNo) {
+                    this.shipmentForm.get('kraPin')?.disable();
+                } else {
+                    this.shipmentForm.get('kraPin')?.enable();
+                }
                 if (data.idfDocumentExists) {
                     this.shipmentForm.get('nationalId')?.clearValidators();
                     this.shipmentForm.get('nationalId')?.updateValueAndValidity();
@@ -1211,12 +1340,33 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
     }
 
     private extractPhoneNumber(input: string): string {
-        if (!input) return '';
-        const digitsOnly = input.replace(/\D/g, '');
-        const lastTenDigits = digitsOnly.slice(-10);
-        return lastTenDigits.startsWith('0')
-            ? lastTenDigits
-            : '0' + lastTenDigits;
+    if (!input) return '';
+
+    let sanitized = input.trim().replace(/[^\d+]/g, '');
+
+    if (sanitized.startsWith('+254')) {
+        let local = sanitized.slice(4); // remove "+254"
+        if (local.length === 9 && local.startsWith('7')) {
+            return '0' + local;
+        }
+        return '0' + local.slice(-9);
+    } else if (sanitized.startsWith('254')) {
+        // without + sign
+        let local = sanitized.slice(3);
+        return '0' + local.slice(-9);
+    } else if (sanitized.length === 9 && sanitized.startsWith('7')) {
+        return '0' + sanitized;
+    } else if (sanitized.length === 10 && sanitized.startsWith('0')) {
+        return sanitized;
     }
+
+    if (sanitized.startsWith('+1') || sanitized.startsWith('+2')) {
+        return sanitized;
+    }
+
+    return sanitized;
+}
+
+
 
 }

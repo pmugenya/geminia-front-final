@@ -270,11 +270,21 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 this.userDocs = data;
                 this.isLoadingMarineData = false;
                 this.shipmentForm.get('idNumber')?.setValue(data.idNo);
+                if (data.idNo) {
+                    this.shipmentForm.get('idNumber')?.disable();
+                } else {
+                    this.shipmentForm.get('idNumber')?.enable();
+                }
                 this.shipmentForm.get('streetAddress')?.setValue(data.postalAddress);
                 this.shipmentForm.get('postalCode')?.setValue(data.postalCode);
                 this.shipmentForm.get('firstName')?.setValue(data.firstName);
                 this.shipmentForm.get('lastName')?.setValue(data.lastName);
                 this.shipmentForm.get('emailAddress')?.setValue(data.emailAddress);
+                if (data.emailAddress) {
+                    this.shipmentForm.get('emailAddress')?.disable();
+                } else {
+                    this.shipmentForm.get('emailAddress')?.enable();
+                }
                 this.shipmentForm.get('phoneNumber')?.setValue(this.extractPhoneNumber(data.phoneNumber));
                 this.shipmentForm.get('kraPin')?.setValue(data.pinNo);
                 this.onDropdownOpen('categories');
@@ -330,6 +340,8 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
             email: ['', [Validators.required, CustomValidators.email]],
             phoneNumber: ['', [Validators.required, CustomValidators.phoneNumber]],
             searchPin: ['', [ CustomValidators.kraPin]],
+            includeWar: [false],
+            includeTranshipping: [false],
         });
 
         // Step 2: Coverage Details (example fields)
@@ -373,9 +385,9 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
             sumInsured: ['', [Validators.required, Validators.min(1)]],
             goodsDescription: ['', Validators.required],
             mpesaNumber: ['', [ CustomValidators.mpesaNumber]],
-
-            // Payment
-            paymentMethod: ['mpesa', Validators.required]
+            paymentMethod: ['mpesa', Validators.required],
+            includeWar: [false],
+            includeTranshipping: [false],
         });
     }
 
@@ -756,8 +768,11 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
             const formValue = this.shipmentForm.getRawValue();
             const modeOfShipment =  formValue.modeOfShipment;
             const  sumInsured = formValue.sumInsured;
+            const  commodityType =  this.quote.packagingtypeId;
+            const  includeWar = formValue.includeWar;
+            const  includeTranshipping = formValue.includeTranshipping;
             if(selectedCategory && modeOfShipment) {
-                this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment).subscribe({
+                this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment,commodityType,includeWar,includeTranshipping).subscribe({
                     next: (res) => {
                         this.quoteResult.phcf  = res.phcf;
                         this.quoteResult.tl  = res.tl;
@@ -894,6 +909,14 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
     }
 
     listenForSumInsuredChanges(): void {
+        this.shipmentForm.get('dateOfDispatch')?.valueChanges.subscribe((dispatchDate: Date) => {
+            if (dispatchDate) {
+                const arrivalDate = new Date(dispatchDate);
+                arrivalDate.setMonth(arrivalDate.getMonth() + 3);
+
+                this.shipmentForm.get('estimatedArrival')?.setValue(arrivalDate);
+            }
+        });
         this.shipmentForm.get('sumInsured')?.valueChanges.pipe(
             debounceTime(300),
             distinctUntilChanged(),
@@ -903,16 +926,18 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 const formValue = this.shipmentForm.getRawValue();
                 const modeOfShipment =  formValue.modeOfShipment;
                 const  marineCargoType = formValue.salesCategory;
+                const  commodityType =  this.quote.packagingtypeId;
+                const  includeWar = formValue.includeWar;
+                const  includeTranshipping = formValue.includeTranshipping;
                 const selectedCategory = this.filteredMarineCargoTypes.find(c => c.ctname === marineCargoType);
                 if(selectedCategory && modeOfShipment) {
-                    this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment).subscribe({
+                    this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment,commodityType,includeWar,includeTranshipping).subscribe({
                         next: (res) => {
                             this.quoteResult.phcf  = res.phcf;
                             this.quoteResult.tl  = res.tl;
                             this.quoteResult.sd  = res.sd;
                             this.quoteResult.netprem  = res.netprem;
                             this.quoteResult.premium  = res.premium;
-                            console.log(this.quoteResult);
                         },
                         error: (err) => {
                             console.error('Error computing premium:', err);
@@ -921,6 +946,57 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 }
             }
         });
+
+        this.shipmentForm.get('includeTranshipping')?.valueChanges.subscribe(value => {
+            const formValue = this.shipmentForm.getRawValue();
+            const modeOfShipment =  formValue.modeOfShipment;
+            const sumInsured =  formValue.sumInsured;
+            const  marineCargoType = formValue.salesCategory;
+            const  includeWar = formValue.includeWar;
+            const  includeTranshipping = value;
+            const packagingTypeId = this.quote.packagingtypeId;
+            const selectedCategory = this.filteredMarineCargoTypes.find(c => c.ctname === marineCargoType);
+            if(selectedCategory && modeOfShipment) {
+                this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment,packagingTypeId,includeWar,includeTranshipping).subscribe({
+                    next: (res) => {
+                        this.quoteResult.phcf  = res.phcf;
+                        this.quoteResult.tl  = res.tl;
+                        this.quoteResult.sd  = res.sd;
+                        this.quoteResult.netprem  = res.netprem;
+                        this.quoteResult.premium  = res.premium;
+                    },
+                    error: (err) => {
+                        console.error('Error computing premium:', err);
+                    }
+                });
+            }
+        });
+
+        this.shipmentForm.get('includeWar')?.valueChanges.subscribe(value => {
+            const formValue = this.shipmentForm.getRawValue();
+            const modeOfShipment =  formValue.modeOfShipment;
+            const sumInsured =  formValue.sumInsured;
+            const  marineCargoType = formValue.salesCategory;
+            const  includeWar = value;
+            const  includeTranshipping = formValue.includeTranshipping;
+            const packagingTypeId = this.quote.packagingtypeId;
+            const selectedCategory = this.filteredMarineCargoTypes.find(c => c.ctname === marineCargoType);
+            if(selectedCategory && modeOfShipment) {
+                this.quotationService.computePremium(sumInsured, selectedCategory.id, modeOfShipment,packagingTypeId,includeWar,includeTranshipping).subscribe({
+                    next: (res) => {
+                        this.quoteResult.phcf  = res.phcf;
+                        this.quoteResult.tl  = res.tl;
+                        this.quoteResult.sd  = res.sd;
+                        this.quoteResult.netprem  = res.netprem;
+                        this.quoteResult.premium  = res.premium;
+                    },
+                    error: (err) => {
+                        console.error('Error computing premium:', err);
+                    }
+                });
+            }
+        });
+
     }
 
     onScroll(event: Event) {
@@ -1465,11 +1541,30 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
 
     private extractPhoneNumber(input: string): string {
         if (!input) return '';
-        const digitsOnly = input.replace(/\D/g, '');
-        const lastTenDigits = digitsOnly.slice(-10);
-        return lastTenDigits.startsWith('0')
-            ? lastTenDigits
-            : '0' + lastTenDigits;
+
+        let sanitized = input.trim().replace(/[^\d+]/g, '');
+
+        if (sanitized.startsWith('+254')) {
+            let local = sanitized.slice(4); // remove "+254"
+            if (local.length === 9 && local.startsWith('7')) {
+                return '0' + local;
+            }
+            return '0' + local.slice(-9);
+        } else if (sanitized.startsWith('254')) {
+            // without + sign
+            let local = sanitized.slice(3);
+            return '0' + local.slice(-9);
+        } else if (sanitized.length === 9 && sanitized.startsWith('7')) {
+            return '0' + sanitized;
+        } else if (sanitized.length === 10 && sanitized.startsWith('0')) {
+            return sanitized;
+        }
+
+        if (sanitized.startsWith('+1') || sanitized.startsWith('+2')) {
+            return sanitized;
+        }
+
+        return sanitized;
     }
 
     scrollToFirstError(): void {
@@ -1565,6 +1660,8 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
             tradeType: this.quotationForm.get('tradeType')?.value,
             countryOrigin: this.quotationForm.get('origin')?.value,
             destination: this.quotationForm.get('destination')?.value,
+            includeWar: this.quotationForm.get('includeWar')?.value,
+            includeTransShipping: this.quotationForm.get('includeTranshipping')?.value,
             dateFormat: 'dd MMM yyyy',
             locale: 'en_US',
             productId: 2416,
@@ -1589,6 +1686,8 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 this.shipmentForm.get('sumInsured')?.setValue(formValue.sumInsured);
                 this.shipmentForm.get('selectCategory')?.setValue(formValue.marineCategory);
                 this.shipmentForm.get('salesCategory')?.setValue(formValue.marineCargoType);
+                this.shipmentForm.get('includeWar')?.setValue(formValue.includeWar);
+                this.shipmentForm.get('includeTranshipping')?.setValue(formValue.includeTranshipping);
                 const originCountryId = Number(formValue.origin);
                 let selectedCountry = this.origincountries.find(c => c.id === originCountryId);
                 const setCountryAndProceed = (country: Country) => {
@@ -1653,13 +1752,28 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
                 this.userDocs = data;
                 this.isLoadingMarineData = false;
                 this.shipmentForm.get('idNumber')?.setValue(data.idNo);
+                if (data.idNo) {
+                    this.shipmentForm.get('idNumber')?.disable();
+                } else {
+                    this.shipmentForm.get('idNumber')?.enable();
+                }
                 this.shipmentForm.get('streetAddress')?.setValue(data.postalAddress);
                 this.shipmentForm.get('postalCode')?.setValue(data.postalCode);
                 this.shipmentForm.get('firstName')?.setValue(data.firstName);
                 this.shipmentForm.get('lastName')?.setValue(data.lastName);
                 this.shipmentForm.get('emailAddress')?.setValue(data.emailAddress);
+                if (data.emailAddress) {
+                    this.shipmentForm.get('emailAddress')?.disable();
+                } else {
+                    this.shipmentForm.get('emailAddress')?.enable();
+                }
                 this.shipmentForm.get('phoneNumber')?.setValue(this.extractPhoneNumber(data.phoneNumber));
                 this.shipmentForm.get('kraPin')?.setValue(data.pinNo);
+                if (data.pinNo) {
+                    this.shipmentForm.get('kraPin')?.disable();
+                } else {
+                    this.shipmentForm.get('kraPin')?.enable();
+                }
                 if (data.idfDocumentExists) {
                     this.shipmentForm.get('nationalId')?.clearValidators();
                     this.shipmentForm.get('nationalId')?.updateValueAndValidity();
@@ -1777,7 +1891,8 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
             dateOfDispatch: this.datePipe.transform(kycFormValue.dateOfDispatch, 'dd MMM yyyy'),
             estimatedArrivalDate: this.datePipe.transform(kycFormValue.estimatedArrival, 'dd MMM yyyy'),
             description: kycFormValue.goodsDescription,
-            // shippingItems: kycFormValue.shippingItems,
+            includeWar: kycFormValue.includeWar,
+            includeTransShipping: kycFormValue.includeTranshipping,
             dateFormat: 'dd MMM yyyy',
             locale: 'en_US',
         };

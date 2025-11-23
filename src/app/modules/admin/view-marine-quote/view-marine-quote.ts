@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
@@ -8,6 +8,8 @@ import { QuoteService } from '../../../core/services/quote.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { HttpEventType } from '@angular/common/http';
 import { MatProgressBar } from '@angular/material/progress-bar';
+import { interval, Subscription, switchMap, takeUntil, takeWhile, tap, timer } from 'rxjs';
+import { MatCheckbox } from '@angular/material/checkbox';
 
 // Interfaces matching your Java model
 interface ApplicationShippingItemsData {
@@ -107,13 +109,15 @@ interface ApplicationShippingData {
         MatProgressSpinner,
         NgIf,
         MatProgressBar,
+        MatCheckbox,
     ],
 })
-export class ViewMarineQuote implements OnInit {
+export class ViewMarineQuote implements OnInit,OnDestroy {
     // Application Data
     applicationData: ApplicationShippingData | null = null;
     isLoading = false;
     error: string | null = null;
+    private pollingSubscription!: Subscription;
 
     // Individual properties for easy template binding
     id: number;
@@ -190,64 +194,27 @@ export class ViewMarineQuote implements OnInit {
         private route: ActivatedRoute,
         private router: Router,
         private snackBar: MatSnackBar,
-        private dialog: MatDialog,
         private quoteService: QuoteService,
         private cdr: ChangeDetectorRef
     ) {}
 
     ngOnInit(): void {
-        // Get application ID from route params
+        const maxPollingTime = 2 * 60 * 1000;
         this.quoteId = this.route.snapshot.paramMap.get('quoteId')!;
-        this.isLoading = true;
-        this.cdr.detectChanges();
-        this.quoteService.retrieveOneTransaction(Number(this.quoteId!)).subscribe({
-            next: (data) => {
-                this.refno = data.refno;
-                this.paid = data.paid;
-                this.originCountryName = data.originCountryName;
-                this.originPortName = data.originPortName;
-                this.destCountryName = data.destCountryName;
-                this.destPortName = data.destPortName;
-                this.shippingModeName = data.shippingModeName;
-                this.dateArrival = data.dateArrival;
-                this.dischageDate = data.dischageDate;
-                this.countyName = data.countyName;
-                this.transshippingAt = data.transshippingAt;
-                this.idfNumber = data.idfNumber;
-                this.vesselName = data.vesselName;
-                this.vesselNumber = data.vesselNumber;
-                this.rotationNumber = data.rotationNumber;
-                this.voyageNumber = data.voyageNumber;
-                this.ucrNumber = data.ucrNumber;
-                this.productName = data.productName;
-                this.erprefno = data.erprefno;
-                this.sumassured = data.sumassured;
-                this.premium = data.premium;
-                this.traininglevy = data.traininglevy;
-                this.premrate  = data.premrate;
-                this.phf = data.phf;
-                this.stampduty = data.stampduty;
-                this.totalPaid = data.totalPaid;
-                this.netpremium = data.netpremium;
-                this.agencyName = data.agencyName;
-                this.approvedStatus = data.approvedStatus;
-                this.batchNo = data.batchNo;
-                console.log(data);
-                this.isLoading = false;
-                this.cdr.detectChanges();
-            },
-            error: (err) => {
-                this.isLoading = false;
-                this.cdr.detectChanges();
-                console.error('Error fetching transaction:', err);
-            }
-        });
-        this.route.params.subscribe(params => {
-            const appId = params['id'];
-            if (appId) {
+        const stopPolling$ = timer(maxPollingTime);
 
-            }
-        });
+        this.pollingSubscription = interval(500)
+            .pipe(
+                switchMap(() => this.quoteService.retrieveOneTransaction(Number(this.quoteId))),
+                takeUntil(stopPolling$) // stops polling after maxPollingTime
+            )
+            .subscribe(data => {
+                this.setTransactionData(data);
+                if (data.erprefno) {
+                    console.log('erprefno has arrived:', data.erprefno);
+                    this.pollingSubscription.unsubscribe(); // stop polling immediately
+                }
+            });
 
         // Alternative: Load data passed via navigation state
         const navigation = this.router.getCurrentNavigation();
@@ -256,12 +223,45 @@ export class ViewMarineQuote implements OnInit {
         }
     }
 
+    ngOnDestroy() {
+        this.pollingSubscription?.unsubscribe();
+    }
+
+    setTransactionData(data: any) {
+        this.refno = data.refno;
+        this.paid = data.paid;
+        this.originCountryName = data.originCountryName;
+        this.originPortName = data.originPortName;
+        this.destCountryName = data.destCountryName;
+        this.destPortName = data.destPortName;
+        this.shippingModeName = data.shippingModeName;
+        this.dateArrival = data.dateArrival;
+        this.dischageDate = data.dischageDate;
+        this.countyName = data.countyName;
+        this.transshippingAt = data.transshippingAt;
+        this.idfNumber = data.idfNumber;
+        this.vesselName = data.vesselName;
+        this.vesselNumber = data.vesselNumber;
+        this.rotationNumber = data.rotationNumber;
+        this.voyageNumber = data.voyageNumber;
+        this.ucrNumber = data.ucrNumber;
+        this.productName = data.productName;
+        this.erprefno = data.erprefno;
+        this.sumassured = data.sumassured;
+        this.premium = data.premium;
+        this.traininglevy = data.traininglevy;
+        this.premrate  = data.premrate;
+        this.phf = data.phf;
+        this.stampduty = data.stampduty;
+        this.totalPaid = data.totalPaid;
+        this.netpremium = data.netpremium;
+        this.agencyName = data.agencyName;
+        this.approvedStatus = data.approvedStatus;
+        this.batchNo = data.batchNo;
+    }
+
 
     printCertificate(){
-<<<<<<< HEAD
-=======
-        console.log(this.error);
->>>>>>> 10fc744d0cd3a5993a89f0fd8764c68f7223b5ce
         if(this.error){
             this.showError('An Error Occured while trying to retrieve certificate '+this.error);
             return;

@@ -126,7 +126,7 @@
                                            [ngClass]="!shipmentForm.get('kraPin')?.value ? 'border-red-500' : 'border-gray-300'"
                                            formControlName="kraPin"
                                            placeholder="Enter KRA PIN"
-                                           maxlength="11" readonly>
+                                           maxlength="11">
                                 </div>
                             </div>
 
@@ -216,7 +216,7 @@
                             <!-- Vessel Name | IDF Number -->
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                                 <div>
-                                    <label class="block text-base font-medium text-gray-700 mb-1">Vessel Name</label>
+                                    <label class="block text-base font-medium text-gray-700 mb-1">Vessel Name *</label>
                                     <input [class]="'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:border-transparent ' +
                            ((shipmentForm.get('vesselName')?.invalid && shipmentForm.get('vesselName')?.touched) ?
                            'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500') +
@@ -279,7 +279,7 @@
                                             <mat-option>
                                                 <ngx-mat-select-search [formControl]="cargoTypeFilterCtrl2" placeholderLabel="Search cargo types..."></ngx-mat-select-search>
                                             </mat-option>
-                                            <mat-option *ngFor="let type of filteredMarineCargoTypes" [value]="type.ctname">
+                                            <mat-option *ngFor="let type of filteredMarineCargoTypess" [value]="type.ctname">
                                                 {{ type.ctname }}
                                             </mat-option>
                                         </mat-select>
@@ -471,7 +471,24 @@
                                         <span class="text-gray-600">Stamp Duty:</span>
                                         <span class="font-semibold">KES {{ formatAmount(quoteResult.sd) }}</span>
                                     </div>
+                                    <div class="flex justify-between text-sm" *ngIf="quoteResult.transhipping">
+                                        <span class="text-gray-600">Trans Shipping:</span>
+                                        <span class="font-semibold">KES {{ formatAmount(quoteResult.transhipping) }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-sm" *ngIf="quoteResult.war">
+                                        <span class="text-gray-600">War:</span>
+                                        <span class="font-semibold">KES {{ formatAmount(quoteResult.war) }}</span>
+                                    </div>
                                 </div>
+                            </div>
+                            <div class="flex flex-col gap-3 mb-4">
+                                <mat-checkbox color="primary" formControlName="includeWar">
+                                    Include War
+                                </mat-checkbox>
+
+                                <mat-checkbox color="primary" formControlName="includeTranshipping">
+                                    Include Transhipping
+                                </mat-checkbox>
                             </div>
 
                             <!-- Total Amount -->
@@ -521,11 +538,18 @@
                                 <button
                                     mat-raised-button
                                     color="primary"
-                                    class="w-full py-3 text-lg font-semibold"
+                                    class="w-full py-3 text-lg font-semibold rounded-lg border border-blue-700
+         shadow-md transition-all duration-300
+         bg-blue-600 text-white
+         hover:bg-teal-600 hover:text-white hover:shadow-xl
+         disabled:opacity-50 disabled:cursor-not-allowed"
                                     [disabled]="isProcessPayment || !shipmentForm.get('mpesaNumber')?.value"
                                     (click)="initiatePayment()">
+
                                     <mat-spinner *ngIf="isProcessPayment" diameter="24" class="mr-2"></mat-spinner>
-                                    <mat-icon *ngIf="!isProcessPayment" class="mr-2">send</mat-icon>
+
+                                    <mat-icon *ngIf="!isProcessPayment" class="mr-2 !text-white">send</mat-icon>
+
                                     {{ isProcessPayment ? 'Processing Payment...' : 'Send Payment Prompt' }}
                                 </button>
 
@@ -539,13 +563,20 @@
                                 <button
                                     mat-raised-button
                                     color="primary"
-                                    class="w-full py-3 text-lg font-semibold"
+                                    class="w-full py-3 text-lg font-semibold rounded-lg border border-blue-700
+         shadow-md transition-all duration-300
+         bg-blue-600 text-white
+         hover:bg-teal-600 hover:text-white hover:shadow-xl"
                                     [disabled]="isSubmitting"
                                     (click)="onSubmit()">
+
                                     <mat-spinner *ngIf="isSubmitting" diameter="24" class="mr-2"></mat-spinner>
-                                    <mat-icon *ngIf="!isSubmitting" class="mr-2">send</mat-icon>
+
+                                    <mat-icon *ngIf="!isSubmitting" class="mr-2 !text-white">send</mat-icon>
+
                                     {{ isSubmitting ? 'Submitting Application...' : 'Submit Application' }}
                                 </button>
+
 
                                 <p class="text-xs text-center text-gray-500 mt-2">
                                     You'll be able to make payment after submitting your application

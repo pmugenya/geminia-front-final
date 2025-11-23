@@ -59,6 +59,8 @@ export interface QuotesData {
     sumassured: number;
     premium: number;
     traininglevy: number;
+    war: number;
+    transhipping: number;
     phcf: number;
     sd: number;
     netprem: number;
@@ -83,6 +85,11 @@ export interface QuotesData {
     daysToExpiry: number;
 }
 
+export interface YTDAnalysis {
+    ytdPremium: number;
+    ytdSumAssured: number;
+}
+
 
 export interface QuoteResult {
     result: number,
@@ -91,7 +98,9 @@ export interface QuoteResult {
     tl: number,
     sd: number,
     netprem: number,
-    id: number
+    id: number,
+    war: number,
+    transhipping: number,
 }
 
 export interface MarineProduct {
@@ -179,6 +188,8 @@ export interface PolicyRecord {
     ucrNumber:string;
     coverFrom: Date;
     coverTo: Date;
+    error: string;
+    batchNo: number;
 }
 
 
@@ -257,3 +268,14 @@ export interface TravelRatesData {
     travelCoversData: TravelCoversData;
 }
 
+
+export interface QuotesAnalysis {
+    totalQuotes: number;
+    totalPremium: number;
+    totalConvertedQuotes: number;
+}
+
+export interface GrowthDTO {
+    month: string;
+    growthPercentage: number;
+}
