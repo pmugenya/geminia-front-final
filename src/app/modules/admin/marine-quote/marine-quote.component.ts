@@ -5,7 +5,7 @@ import {
     Category,
     Country,
     MarineProduct,
-    PackagingType, Port,
+    PackagingType, Port, PostalCode,
     QuoteResult, QuotesData, StoredUser,
     User, UserDocumentData,
 } from '../../../core/user/user.types';
@@ -130,6 +130,7 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
     filteredMarineCargoTypes: CargoTypeData[] = [];
     duplicateFileErrors: { [key: string]: string } = {};
     today = new Date();
+    postalCodes: PostalCode[] = [];
 
     userDocs?: UserDocumentData;
     private destroy$ = new Subject<void>();
@@ -230,11 +231,13 @@ export class MarineQuoteComponent implements OnInit, OnDestroy
             products: this.userService.getMarineProducts(),
             packagingTypes: this.userService.getMarinePackagingTypes(),
             categories: this.userService.getMarineCategories(),
+            postalcodes: this.quotationService.getPostalCodes()
         }).subscribe({
             next: (data) => {
                 this.marineProducts = data.products || [];
                 this.marinePackagingTypes = data.packagingTypes || [];
                 this.marineCategories = data.categories || [];
+                this.postalCodes = data.postalcodes;
 
                 // Initialize filtered arrays
                 this.filteredMarineCategories = this.marineCategories.slice();

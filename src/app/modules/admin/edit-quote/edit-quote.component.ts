@@ -47,7 +47,7 @@ import {
     Country,
     MarineProduct,
     PackagingType,
-    Port, QuoteResult,
+    Port, PostalCode, QuoteResult,
     QuotesData, UserDocumentData,
 } from '../../../core/user/user.types';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -142,6 +142,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
     categories: any[] = [];
     counties: any[] = [];
     origincountries: Country[] = [];
+    postalCodes: PostalCode[] = [];
     filteredMarineCategories: Category[] = [];
     filteredMarineCargoTypes: CargoTypeData[] = [];
     filteredMarineCargoTypess: CargoTypeData[] = [];
@@ -195,6 +196,7 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
             products: this.userService.getMarineProducts(),
             packagingTypes: this.userService.getMarinePackagingTypes(),
             categories: this.userService.getMarineCategories(),
+            postalcodes: this.quotationService.getPostalCodes()
         }).subscribe({
             next: (data) => {
                 this.marineProducts = data.products || [];
@@ -202,6 +204,8 @@ export class EditMarineQuoteComponent implements OnInit, OnDestroy
                 this.marineCategories = data.categories ?? [];
                 // Initialize filtered arrays
                 this.filteredMarineCategories = [...this.marineCategories];
+
+                this.postalCodes = data.postalcodes;
 
                 if (this.marineCategories.length === 0) {
                     console.warn("⚠ Marine categories returned empty list from API.");

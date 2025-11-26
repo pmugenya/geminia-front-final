@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpEvent, HttpParams, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { GrowthDTO, QuotesAnalysis, QuotesData, RecentActivity, YTDAnalysis } from '../user/user.types';
+import { GrowthDTO, PostalCode, QuotesAnalysis, QuotesData, RecentActivity, YTDAnalysis } from '../user/user.types';
 
 @Injectable({ providedIn: 'root' })
 export class QuoteService {
@@ -27,6 +27,9 @@ export class QuoteService {
         });
     }
 
+    getPostalCodes(): Observable<PostalCode[]> {
+        return this.http.get<PostalCode[]>(`${this.baseUrl}/self/countries/postalcodes`);
+    }
 
 
     createApplication(

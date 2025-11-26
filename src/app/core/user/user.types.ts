@@ -166,6 +166,13 @@ export interface PendingQuote {
     expiryDates: Date;
 }
 
+export interface PostalCode {
+    id: number,
+    postalCode: string;
+    postalTown: string;
+}
+
+
 export  interface PortData {
     id: number,
     portName:string
