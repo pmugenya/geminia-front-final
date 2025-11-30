@@ -286,3 +286,23 @@ export interface GrowthDTO {
     month: string;
     growthPercentage: number;
 }
+
+export interface TravelQuoteData {
+    travelQuoteId: number;
+    planName: string;
+    durationDesc: string;
+    countryFrom: string;
+    countryTo: string;
+    fromDate: Date;
+    toDate: Date;
+    travellersCnt: number;
+    email: string;
+    mobile: string;
+    travelBenefits: TravelBenefitsData[];
+    premium: number;
+    phcf: number;
+    tl: number;
+    sd: number;
+    netPrem: number;
+    winterPrem: number;
+}

@@ -1,19 +1,13 @@
-import { Component, OnDestroy, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
+import { Component, EventEmitter, OnDestroy, OnInit, Output, ViewChild, ViewEncapsulation } from '@angular/core';
 import { FuseAlertComponent, FuseAlertService } from '../../../../@fuse/components/alert';
 import { MatIcon } from '@angular/material/icon';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDatepickerModule, MatDatepickerToggle } from '@angular/material/datepicker';
-import {
-    DateAdapter,
-    MAT_DATE_FORMATS,
-    MAT_DATE_LOCALE,
-    MatDateFormats,
-    MatNativeDateModule,
-} from '@angular/material/core';
+import { DateAdapter, MAT_DATE_FORMATS, MAT_DATE_LOCALE, MatNativeDateModule } from '@angular/material/core';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import {
-    AsyncPipe,
-    CurrencyPipe, DatePipe,
+    AsyncPipe, CurrencyPipe,
+    DatePipe,
     DecimalPipe,
     NgClass,
     NgForOf,
@@ -30,38 +24,26 @@ import { MatRadioButton, MatRadioGroup } from '@angular/material/radio';
 import { ThousandsSeparatorValueAccessor } from '../../../core/directives/thousands-separator-value-accessor';
 import { MatCheckbox } from '@angular/material/checkbox';
 import { MomentDateAdapter } from '@angular/material-moment-adapter';
-import { AuthService } from '../../../core/auth/auth.service';
+import { MY_DATE_FORMATS } from '../travel-quote/travel-quote.component';
+import { map, startWith, Subject, takeUntil } from 'rxjs';
+import { Country, TravelDuration, TravelQuoteData, TravelRatesData } from '../../../core/user/user.types';
 import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { TravelService } from '../../../core/services/travel.service';
-import { Country, TravelDuration, TravelQuoteData, TravelRatesData } from '../../../core/user/user.types';
+import { UserService } from '../../../core/user/user.service';
 import { noWhitespaceValidator } from '../../../core/validators/white-space-validator';
 import { kenyanPhoneNumberValidator } from '../../../core/validators/kenyan-phone-validator';
 import { duplicateTravelerValidator } from '../../../core/validators/duplicator-traveller-validator';
-import { map, startWith, Subject, takeUntil } from 'rxjs';
+import { CustomValidators } from '../../../core/validators/custom.validators';
 import { fullNameValidator } from '../../../core/validators/full-name-validator';
 import { dobValidator } from '../../../core/validators/dob-validator';
-import { UserService } from '../../../core/user/user.service';
-import { CustomValidators } from '../../../core/validators/custom.validators';
 
-// @ts-ignore
-export const MY_DATE_FORMATS: MatDateFormats = {
-    parse: {
-        dateInput: 'DD-MMM-YYYY',
-    },
-    display: {
-        dateInput: 'DD-MMM-YYYY',
-        monthYearLabel: 'MMM YYYY',
-        dateA11yLabel: 'DD-MMM-YYYY',
-        monthYearA11yLabel: 'MMMM YYYY',
-    },
-};
 
 @Component({
-    selector: 'travel',
+    selector: 'app-quick-travel',
     standalone: true,
-    templateUrl: './travel-quote.component.html',
-    styleUrls: ['./travel-quote.component.scss'],
+    templateUrl: './quick-travel-quote.component.html',
+    styleUrls: ['./quick-travel-quote.component.css'],
     encapsulation: ViewEncapsulation.None,
     imports: [
         FuseAlertComponent,
@@ -101,8 +83,7 @@ export const MY_DATE_FORMATS: MatDateFormats = {
         { provide: MAT_DATE_FORMATS, useValue: MY_DATE_FORMATS },
     ],
 })
-export class TravelQuoteComponent implements OnInit, OnDestroy
-{
+export class QuickTravelQuoteComponent implements OnInit, OnDestroy {
 
     @ViewChild('stepper') stepper!: MatStepper;
     private unsubscribe$ = new Subject<void>();
@@ -115,12 +96,6 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
     submissionError: string | null = null;
     countries: Country[] = [];
     destCountries: Country[] = [];
-    applicationSubmitted: boolean = false;
-    isSubmitting: boolean = false;
-    isProcessPayment: boolean = false;
-    isProcessingStk = false;
-    paymentSuccess?: boolean;
-    paymentRefNo: string ='';
     today = new Date();
     totalDays: number = 0;
     filteredCountries$;
@@ -129,6 +104,7 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
     searchDestCtrl = new FormControl('');
     isLoadingData: boolean;
     quotId: number;
+    @Output() closeQuote = new EventEmitter<void>();
 
     constructor(
         private fb: FormBuilder,
@@ -140,7 +116,7 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
         private userService: UserService
     ) {
         this.quoteForm = this.fb.group({
-            duration: ['4', Validators.required],
+            duration: [''],
             plan: ['', Validators.required],
             countryFromId: ['', Validators.required],
             countryToId: ['', Validators.required],
@@ -153,34 +129,16 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
             phoneNumber: ['', [Validators.required, kenyanPhoneNumberValidator, noWhitespaceValidator]],
             numTravelers: [1, [Validators.required, Validators.min(1)]],
             winterSports: [false],
-            // UPDATED: Added duplicateTravelerValidator to the FormArray
             travelers: this.fb.array([], [Validators.required, Validators.minLength(1), duplicateTravelerValidator]),
-
-        });
-
-        this.paymentForm = this.fb.group({
-            mpesaNumber: ['', [ CustomValidators.mpesaNumber]],
-
         });
 
 
-    }
-
-    ngOnDestroy(): void {
-        this.unsubscribe$.next(); this.unsubscribe$.complete();
     }
 
     ngOnInit(): void {
-        const authUser =  this.userService.getCurrentUser();
-        if(authUser.userType==='C'){
-            this.travelerDetailsForm.get('phoneNumber')?.disable();
-            this.travelerDetailsForm.get('email')?.disable();
-             this.fetchProspectDocuments();
-        }
-        else{
-            this.travelerDetailsForm.get('phoneNumber')?.enable();
-            this.travelerDetailsForm.get('email')?.enable();
-        }
+
+        this.travelerDetailsForm.get('phoneNumber')?.enable();
+        this.travelerDetailsForm.get('email')?.enable();
         this._fuseAlertService.dismiss('submissionError');
         this.loadConfig();
 
@@ -218,7 +176,10 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
         this.quoteForm.get('estimatedArrival')?.valueChanges.subscribe(() => {
             this.calculateDays();
         });
+    }
 
+    ngOnDestroy(): void {
+        this.unsubscribe$.next(); this.unsubscribe$.complete();
     }
 
     calculateDays() {
@@ -239,17 +200,6 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
         this.loadRates(this.totalDays);
     }
 
-    onMpesaNumberInput(event: any): void {
-        let value = event.target.value.trim();
-        value = value.replace(/[^0-9]/g, '');
-        if (value.length > 0 && !value.startsWith('0')) {
-            value = '0' + value;
-        }
-        if (value.length > 10) {
-            value = value.substring(0, 10);
-        }
-        this.travelerDetailsForm.patchValue({ mpesaNumber: value });
-    }
 
     loadConfig(): void {
         this.travelService.getTravelDurations().subscribe({
@@ -280,6 +230,7 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
     moveToNext(): void {
 
         if (!this.quoteForm.valid) {
+            this.logInvalidFields(this.quoteForm);
             this.submissionError =
                 `Please Select Cover Period and Plan to continue...`;
             return;
@@ -287,14 +238,22 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
         this.stepper.next();
     }
 
-    buyNow(): void
-    {
-        this.stepper.next();
+    logInvalidFields(formGroup: FormGroup | FormArray, parentKey: string = '') {
+        Object.keys(formGroup.controls).forEach(key => {
+            const control = formGroup.get(key);
+            const controlKey = parentKey ? `${parentKey}.${key}` : key;
+
+            if (control instanceof FormControl) {
+                if (control.invalid) {
+                    console.log(`Invalid field: ${controlKey}`, control.errors);
+                }
+            } else if (control instanceof FormGroup || control instanceof FormArray) {
+                this.logInvalidFields(control, controlKey);
+            }
+        });
     }
 
-    proceedToPayment(): void {
 
-    }
 
     saveTravelQuote(): void {
         const planId = this.quoteForm.get('plan')?.value;
@@ -327,8 +286,8 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
         };
         this.travelService.saveTravelQuote(requestBody).subscribe({
             next: (response) => {
-               this.quotId = response.id;
-               this.loadQuote();
+                this.quotId = response.id;
+                this.loadQuote();
             },
             error: (err) => {
                 console.error("Error:", err);
@@ -467,21 +426,9 @@ export class TravelQuoteComponent implements OnInit, OnDestroy
         }
     }
 
-    fetchProspectDocuments(): void {
-        this.isLoadingData = true;
-        this.userService.getUserDetails().subscribe({
-            next: (data) => {
-                this.isLoadingData = false;
-                this.travelerDetailsForm.patchValue({
-                    phoneNumber: data.phoneNumber,
-                    email: data.emailAddress,
-                });
-            },
-            error: (err) => {
-                this.isLoadingData = false;
-            }
-        });
+    buyNow(): void {
+        this.closeQuote.emit();
+         this.router.navigate(['/editquote', -2000]);
     }
-
 
 }

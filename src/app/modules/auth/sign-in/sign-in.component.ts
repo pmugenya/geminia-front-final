@@ -22,6 +22,7 @@ import { AuthService } from 'app/core/auth/auth.service';
 import { finalize } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { MarineQuickQuoteComponent } from '../../admin/quick-quote/marine-quick-quote.component';
+import { QuickTravelQuoteComponent } from '../../admin/quick-travel-quote/quick-travel-quote.component';
 
 @Component({
     selector: 'auth-sign-in',
@@ -40,7 +41,8 @@ import { MarineQuickQuoteComponent } from '../../admin/quick-quote/marine-quick-
         MatIconModule,
         MatCheckboxModule,
         MatProgressSpinnerModule,
-        MarineQuickQuoteComponent
+        MarineQuickQuoteComponent,
+        QuickTravelQuoteComponent
     ],
 })
 export class AuthSignInComponent implements OnInit,OnDestroy {
@@ -59,6 +61,7 @@ export class AuthSignInComponent implements OnInit,OnDestroy {
     loginState: 'credentials' | 'otp' = 'credentials';
     otpCountdown: number = 0;
     showMarineQuote = false;
+    showTravelQuote = false;
     private otpCountdownInterval: any;
 
     /**
@@ -204,6 +207,12 @@ export class AuthSignInComponent implements OnInit,OnDestroy {
         });
     }
 
+    formatCountdown(seconds: number): string {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
     /**
      * Starts the OTP countdown timer (60 seconds)
      */
@@ -231,5 +240,11 @@ export class AuthSignInComponent implements OnInit,OnDestroy {
 
     toggleMarineQuote() {
         this.showMarineQuote = true;
+        this.showTravelQuote = false;
+    }
+
+    toggleTravelQuote() {
+        this.showMarineQuote = false;
+        this.showTravelQuote = true;
     }
 }
